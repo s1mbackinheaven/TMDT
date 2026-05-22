@@ -1,0 +1,42 @@
+rules:
+    Luôn sử dùng reactJS + JavaScript + tailwindcss + vite
+    Syntax: Luôn sử dụng Arrow Functions (const Component = () => {}) cho cả Components và các hàm xử lý bên trong. Tuyệt đối không dùng từ khóa function truyền thống.
+    Language: Viết code sạch, ưu tiên tính dễ đọc. Sử dụng Tiếng Việt cho các đoạn comment giải thích code.
+    Comments: Thêm comment ngắn gọn, súc tích cho các logic phức tạp, các hàm xử lý dữ liệu hoặc các useEffect quan trọng.
+    Atomic Design: Chia nhỏ component để tái sử dụng. Mỗi file chỉ nên đảm nhận một nhiệm vụ duy nhất (Single Responsibility Principle).
+    Folder Structure:
+        src/components: Các UI component dùng chung (Button, Input, Modal...).
+        src/features hoặc src/pages: Các component lớn chứa logic nghiệp vụ cụ thể.
+        src/hooks: Các custom hooks để tách biệt logic khỏi UI.
+    Props: Sử dụng destructuring cho Props ngay tại khai báo hàm.
+    Utility-first: Sử dụng thuần Tailwind CSS cho styling.
+    Organization: Sắp xếp class theo thứ tự: Layout (position, display) -> Box Model (margin, padding, size) -> Typography -> Colors -> Effects (shadow, rounded).
+    Maintenance: Nếu một danh sách class quá dài, hãy cân nhắc sử dụng thư viện clsx hoặc tailwind-merge để quản lý.
+    Backend Awareness: Trước khi viết code fetch API, Cursor bắt buộc phải đọc kỹ file code Backend (hoặc tài liệu API) mà người dùng cung cấp để đảm bảo đúng cấu trúc dữ liệu (Data Schema).
+    Axios Instance: Sử dụng một Axios instance chung (thường đặt ở src/api/axiosClient.js) để cấu hình baseURL, timeout và interceptors.
+    Error Handling: Luôn bọc các hàm gọi API trong khối try-catch và hiển thị thông báo lỗi thân thiện.
+    Return: Luôn trả về các thông báo, noti bằng những return ở backend, không dùng alert có sẵn hoặc tự tạo thông báo riêng, dùng của Backend để hiển thị thông báo.
+    Notification: Luôn hiển thị thông báo bằng cách sử dụng các thông báo từ Backend, không tự tạo thông báo riêng. Và cần tạo thông báo kiểu 1 popup, không phỉ Alert thông thường.
+    State Management: Ưu tiên useState và useReducer cho state cục bộ. Chỉ dùng các thư viện quản lý state toàn cầu (Zustand/Redux) khi thực sự cần thiết.
+    Performance: Sử dụng useMemo và useCallback cho các tính toán nặng hoặc để tránh re-render không đáng có khi truyền function xuống component con.
+    Hãy tự tạo file code sao cho hợp lý, chuẩn chỉnh nhất.
+
+project
+    web hệ thống thương mại điện tử b2c bán nước hoa
+    hệ thống sẽ có các chức năng:
+    - đăng nhập, đăng ký
+    - quản lý tài khoản
+    - quản lý sản phẩm
+    - quản lý đơn hàng
+    - quản lý khách hàng
+    - quản lý giỏ hàng
+    - quản lý thanh toán
+    - quản lý vận chuyển
+    - quản lý đánh giá dành cho khách hàng
+    - quản lý thống kê: doanh thu, sản phẩm,...
+    - quản lý bài viết - chỉ nhân viên sử dụng
+    hệ thống có 3 role:
+    - quản trị viên - admin
+    - nhân viên - staff
+    - khách hàng - customer
+
