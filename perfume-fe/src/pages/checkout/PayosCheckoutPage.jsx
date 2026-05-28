@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 import { FiArrowLeft, FiCopy, FiShield, FiSmartphone } from 'react-icons/fi'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useToast } from '../../contexts/ToastContext'
@@ -11,10 +11,20 @@ const PayosCheckoutPage = () => {
   const { pushToast } = useToast()
   const payos = location.state?.payos || null
   const orderAmount = location.state?.orderAmount || 0
+  const queryStatus = new URLSearchParams(location.search).get('status')
 
   const transferContent = payos?.transferContent || ''
   const checkoutUrl = payos?.qrCodeUrl || payos?.checkoutUrl || ''
   const amount = useMemo(() => Number(orderAmount || payos?.amount || 0), [orderAmount, payos])
+
+  useEffect(() => {
+    if (queryStatus === 'success') {
+      pushToast('Thanh toán đã được xác nhận. Vui lòng chờ hệ thống cập nhật đơn hàng.')
+    }
+    if (queryStatus === 'cancel') {
+      pushToast('Bạn đã hủy thanh toán.', 'error')
+    }
+  }, [queryStatus, pushToast])
 
   const copyText = async (text) => {
     if (!text) return
@@ -26,7 +36,7 @@ const PayosCheckoutPage = () => {
     }
   }
 
-  if (!payos) {
+  if (!payos && !queryStatus) {
     return (
       <div className="w-full max-w-[1200px] px-4 md:px-10 lg:px-16 mx-auto py-10">
         <div className="p-6 bg-white border border-black/5 rounded-2xl text-center">
@@ -44,6 +54,17 @@ const PayosCheckoutPage = () => {
       <button type="button" onClick={() => navigate('/checkout')} className="inline-flex items-center gap-2 text-sm text-black/70 hover:text-black transition-colors">
         <FiArrowLeft /> Quay lại
       </button>
+
+      {queryStatus === 'success' ? (
+        <div className="mt-4 px-4 py-3 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-sm">
+          Thanh toán thành công. Hệ thống đang tự đồng bộ trạng thái đơn hàng.
+        </div>
+      ) : null}
+      {queryStatus === 'cancel' ? (
+        <div className="mt-4 px-4 py-3 rounded-2xl bg-red-50 border border-red-100 text-red-700 text-sm">
+          Bạn đã hủy thanh toán. Nếu muốn, bạn có thể quay lại và thanh toán sau.
+        </div>
+      ) : null}
 
       <div className="mt-4 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
         <section className="p-6 bg-white border border-black/5 rounded-3xl">

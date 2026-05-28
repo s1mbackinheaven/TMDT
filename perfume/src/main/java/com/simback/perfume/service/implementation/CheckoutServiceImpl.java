@@ -8,6 +8,7 @@ import com.simback.perfume.payload.responses.CheckoutBillResponse;
 import com.simback.perfume.payload.responses.CheckoutConfirmResponse;
 import com.simback.perfume.repository.*;
 import com.simback.perfume.service.CheckoutService;
+import com.simback.perfume.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +30,7 @@ public class CheckoutServiceImpl implements CheckoutService {
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
     private final ProductVariantRepository productVariantRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -169,6 +171,12 @@ public class CheckoutServiceImpl implements CheckoutService {
         cartItemRepository.deleteAllInBatch(cartItemRepository.findByCart(cart));
         cartRepository.save(cart);
         checkoutDraftRepository.delete(draft);
+        notificationService.createForUser(order.getUser().getId(),
+                "Đơn hàng mới đã được tạo",
+                "Đơn hàng " + order.getOrderNumber() + " đã được tạo thành công.",
+                "/account/orders/" + order.getId(),
+                order.getItems().isEmpty() ? null : order.getItems().get(0).getThumbnailSnapshot(),
+                NotificationType.ORDER.name());
 
         return CheckoutConfirmResponse.builder()
                 .message("Đã tạo đơn hàng thành công")

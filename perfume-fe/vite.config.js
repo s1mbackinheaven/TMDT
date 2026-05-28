@@ -12,4 +12,9 @@ export default defineConfig({
     }),
     tailwindcss(),
   ],
+  server: {
+    host: true, // Thêm dòng này để Vite lắng nghe trên cả IP local
+    port: 5173,
+    allowedHosts: true,
+  }
 })

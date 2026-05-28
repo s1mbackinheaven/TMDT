@@ -22,8 +22,11 @@ public class OrderController {
     private final OrderService orderService;
 
     @GetMapping("/me")
-    public ResponseEntity<List<OrderResponse>> getMyOrders() {
-        return ResponseEntity.ok(orderService.getMyOrders(resolveUsername()));
+    public ResponseEntity<List<OrderResponse>> getMyOrders(@RequestParam(value = "status", required = false) OrderStatus status,
+                                                            @RequestParam(value = "paymentStatus", required = false) OrderPaymentStatus paymentStatus,
+                                                            @RequestParam(value = "from", required = false) Instant from,
+                                                            @RequestParam(value = "to", required = false) Instant to) {
+        return ResponseEntity.ok(orderService.getMyOrders(resolveUsername(), status, paymentStatus, from, to));
     }
 
     @GetMapping

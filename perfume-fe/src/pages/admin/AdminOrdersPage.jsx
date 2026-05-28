@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { FiCheckCircle, FiEye, FiSend, FiTruck, FiX } from 'react-icons/fi'
 import { getAllOrdersApi, updateOrderStatusApi } from '../../api/orderApi'
 import OrderActionModal from '../checkout/OrderActionModal'
+import CancelOrderModal from '../order/CancelOrderModal'
 
 const ORDER_STATUSES = ['PENDING_CONFIRMATION', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED']
 const PAYMENT_STATUSES = ['UNPAID', 'PAID']
 
 const STATUS_LABELS = {
   PENDING_CONFIRMATION: 'Chờ xác nhận',
-  PROCESSING: 'Xác nhận đơn',
+  PROCESSING: 'Đang xử lý',
   SHIPPED: 'Đang giao',
   DELIVERED: 'Đã giao',
   COMPLETED: 'Hoàn thành',
@@ -38,6 +39,31 @@ const FIELD_LABELS = {
   adminNote: 'Ghi chú admin',
   paid: 'Đã thanh toán',
   createdAt: 'Ngày tạo',
+  updatedAt: 'Ngày cập nhật',
+}
+
+const API_BASE = 'http://localhost:8080'
+const formatVietnamDateTime = (value) => {
+  if (!value) return '—'
+  return new Intl.DateTimeFormat('vi-VN', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone: 'Asia/Ho_Chi_Minh',
+  }).format(new Date(value))
+}
+
+const ORDER_STATUS_LABELS = {
+  PENDING_CONFIRMATION: 'Chờ xác nhận',
+  PROCESSING: 'Đang xử lý',
+  SHIPPED: 'Đang giao',
+  DELIVERED: 'Đã giao',
+  COMPLETED: 'Hoàn thành',
+  CANCELLED: 'Đã hủy',
+}
+
+const PAYMENT_STATUS_LABELS = {
+  UNPAID: 'Chưa thanh toán',
+  PAID: 'Đã thanh toán',
 }
 
 const AdminOrdersPage = () => {
@@ -48,6 +74,7 @@ const AdminOrdersPage = () => {
   const [filters, setFilters] = useState({ status: '', paymentStatus: '', from: '', to: '' })
   const [actionLoadingId, setActionLoadingId] = useState(null)
   const [actionModal, setActionModal] = useState({ open: false, orderId: null, status: '', note: '', mode: 'status' })
+  const [cancelModal, setCancelModal] = useState({ open: false, orderId: null, note: '' })
 
   const loadOrders = async () => {
     setLoading(true)
@@ -82,7 +109,13 @@ const AdminOrdersPage = () => {
       orderId,
       status,
       note: current?.adminNote || '',
+      mode: 'status',
     })
+  }
+
+  const openCancelModal = (orderId) => {
+    const current = orders.find((o) => o.id === orderId)
+    setCancelModal({ open: true, orderId, note: current?.adminNote || '' })
   }
 
   const updateStatus = async () => {
@@ -90,7 +123,7 @@ const AdminOrdersPage = () => {
     setActionLoadingId(orderId)
     try {
       await updateOrderStatusApi(orderId, { status, adminNote: note || '' })
-      setActionModal({ open: false, orderId: null, status: '', note: '' })
+      setActionModal({ open: false, orderId: null, status: '', note: '', mode: 'status' })
       await loadOrders()
       if (selectedOrder?.id === orderId) {
         const refreshed = await getAllOrdersApi({})
@@ -103,10 +136,39 @@ const AdminOrdersPage = () => {
     }
   }
 
+  const handleCancelOrder = async (note) => {
+    const { orderId } = cancelModal
+    setActionLoadingId(orderId)
+    try {
+      await updateOrderStatusApi(orderId, { status: 'CANCELLED', adminNote: note || '' })
+      setCancelModal({ open: false, orderId: null, note: '' })
+      await loadOrders()
+      if (selectedOrder?.id === orderId) {
+        const refreshed = await getAllOrdersApi({})
+        setSelectedOrder(refreshed.find((o) => o.id === orderId) || null)
+      }
+    } catch (err) {
+      setError(err?.response?.data?.message || err?.message || 'Không hủy được đơn hàng')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
   const orderEntries = useMemo(() => {
     if (!selectedOrder) return []
     return Object.entries(selectedOrder).filter(([key]) => !['items'].includes(key))
   }, [selectedOrder])
+
+  const formatOrderValue = (key, value) => {
+    if (key === 'createdAt' || key === 'updatedAt') return formatVietnamDateTime(value)
+    if (key === 'status') return ORDER_STATUS_LABELS[value] || value
+    if (key === 'paymentStatus') return PAYMENT_STATUS_LABELS[value] || value
+    if (key === 'paymentMethod') {
+      const methods = { COD: 'Trả tiền khi nhận hàng', BANK_TRANSFER: 'Chuyển khoản / QR PayOS' }
+      return methods[value] || value
+    }
+    return formatValue(value)
+  }
 
   return (
     <div>
@@ -117,18 +179,30 @@ const AdminOrdersPage = () => {
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 bg-white p-4 rounded-2xl border border-black/5">
-        <select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))} className="px-4 py-3 rounded-xl border border-black/10 bg-white text-sm">
-          <option value="">Tất cả trạng thái</option>
-          {ORDER_STATUSES.map((status) => <option key={status} value={status}>{STATUS_LABELS[status]}</option>)}
-        </select>
-        <select value={filters.paymentStatus} onChange={(e) => setFilters((prev) => ({ ...prev, paymentStatus: e.target.value }))} className="px-4 py-3 rounded-xl border border-black/10 bg-white text-sm">
-          <option value="">Tất cả thanh toán</option>
-          {PAYMENT_STATUSES.map((status) => <option key={status} value={status}>{PAYMENT_LABELS[status]}</option>)}
-        </select>
-        <input type="date" value={filters.from} onChange={(e) => setFilters((prev) => ({ ...prev, from: e.target.value }))} className="px-4 py-3 rounded-xl border border-black/10 bg-white text-sm" />
-        <input type="date" value={filters.to} onChange={(e) => setFilters((prev) => ({ ...prev, to: e.target.value }))} className="px-4 py-3 rounded-xl border border-black/10 bg-white text-sm" />
-        <button type="button" onClick={applyFilters} className="px-4 py-3 rounded-xl bg-black text-white text-sm font-semibold">Lọc đơn</button>
+      <div className="mt-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 bg-white p-4 rounded-2xl border border-black/5 pointer-events-auto relative z-10">
+        <label className="text-xs font-semibold text-black/50">
+          Trạng thái
+          <select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))} className="mt-1 w-full px-4 py-3 rounded-xl border border-black/10 bg-white text-sm">
+            <option value="">Tất cả trạng thái</option>
+            {ORDER_STATUSES.map((status) => <option key={status} value={status}>{STATUS_LABELS[status]}</option>)}
+          </select>
+        </label>
+        <label className="text-xs font-semibold text-black/50">
+          Thanh toán
+          <select value={filters.paymentStatus} onChange={(e) => setFilters((prev) => ({ ...prev, paymentStatus: e.target.value }))} className="mt-1 w-full px-4 py-3 rounded-xl border border-black/10 bg-white text-sm">
+            <option value="">Tất cả thanh toán</option>
+            {PAYMENT_STATUSES.map((status) => <option key={status} value={status}>{PAYMENT_LABELS[status]}</option>)}
+          </select>
+        </label>
+        <label className="text-xs font-semibold text-black/50">
+          Từ ngày
+          <input type="date" value={filters.from} onChange={(e) => setFilters((prev) => ({ ...prev, from: e.target.value }))} className="mt-1 w-full px-4 py-3 rounded-xl border border-black/10 bg-white text-sm" />
+        </label>
+        <label className="text-xs font-semibold text-black/50">
+          Đến ngày
+          <input type="date" value={filters.to} onChange={(e) => setFilters((prev) => ({ ...prev, to: e.target.value }))} className="mt-1 w-full px-4 py-3 rounded-xl border border-black/10 bg-white text-sm" />
+        </label>
+        <button type="button" onClick={applyFilters} className="px-4 py-3 rounded-xl bg-black text-white text-sm font-semibold self-end">Lọc đơn</button>
       </div>
 
       {error ? <div className="mt-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div> : null}
@@ -149,6 +223,7 @@ const AdminOrdersPage = () => {
                 {order.status === 'PENDING_CONFIRMATION' ? <ActionButton label="Xác nhận" icon={<FiSend />} onClick={() => openActionModal(order.id, 'PROCESSING')} loading={actionLoadingId === order.id} /> : null}
                 {order.status === 'PROCESSING' ? <ActionButton label="Đang giao" icon={<FiTruck />} onClick={() => openActionModal(order.id, 'SHIPPED')} loading={actionLoadingId === order.id} /> : null}
                 {order.status === 'SHIPPED' ? <ActionButton label="Đã giao" icon={<FiCheckCircle />} onClick={() => openActionModal(order.id, 'DELIVERED')} loading={actionLoadingId === order.id} /> : null}
+                {order.status === 'PENDING_CONFIRMATION' || order.status === 'PROCESSING' ? <ActionButton label="Hủy đơn" icon={<FiX />} onClick={() => openCancelModal(order.id)} loading={actionLoadingId === order.id} /> : null}
               </div>
             </div>
           ))}
@@ -161,10 +236,16 @@ const AdminOrdersPage = () => {
         description={`Chuyển sang trạng thái ${STATUS_LABELS[actionModal.status] || actionModal.status}`}
         note={actionModal.note}
         setNote={(note) => setActionModal((prev) => ({ ...prev, note }))}
-        onClose={() => setActionModal({ open: false, orderId: null, status: '', note: '' })}
+        onClose={() => setActionModal({ open: false, orderId: null, status: '', note: '', mode: 'status' })}
         onConfirm={updateStatus}
         confirmLabel="Xác nhận"
         confirmLoading={actionLoadingId === actionModal.orderId}
+      />
+      <CancelOrderModal
+        isOpen={cancelModal.open}
+        onClose={() => setCancelModal({ open: false, orderId: null, note: '' })}
+        onConfirm={handleCancelOrder}
+        loading={actionLoadingId === cancelModal.orderId}
       />
 
       {selectedOrder ? (
@@ -180,7 +261,7 @@ const AdminOrdersPage = () => {
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {orderEntries.map(([key, value]) => (
-                  <InfoCard key={key} label={FIELD_LABELS[key] || key} value={formatValue(value)} />
+                  <InfoCard key={key} label={FIELD_LABELS[key] || key} value={formatOrderValue(key, value)} />
                 ))}
               </div>
               <div className="mt-6 p-5 rounded-3xl bg-[#f8f8f8] border border-black/5">
@@ -204,11 +285,20 @@ const AdminOrdersPage = () => {
                 {selectedOrder.status === 'PENDING_CONFIRMATION' ? <ActionButton label="Xác nhận đơn" icon={<FiSend />} onClick={() => openActionModal(selectedOrder.id, 'PROCESSING')} loading={actionLoadingId === selectedOrder.id} /> : null}
                 {selectedOrder.status === 'PROCESSING' ? <ActionButton label="Chuyển giao" icon={<FiTruck />} onClick={() => openActionModal(selectedOrder.id, 'SHIPPED')} loading={actionLoadingId === selectedOrder.id} /> : null}
                 {selectedOrder.status === 'SHIPPED' ? <ActionButton label="Đánh dấu đã giao" icon={<FiCheckCircle />} onClick={() => openActionModal(selectedOrder.id, 'DELIVERED')} loading={actionLoadingId === selectedOrder.id} /> : null}
+                {selectedOrder.status === 'PENDING_CONFIRMATION' || selectedOrder.status === 'PROCESSING' ? <ActionButton label="Hủy đơn" icon={<FiX />} onClick={() => openCancelModal(selectedOrder.id)} loading={actionLoadingId === selectedOrder.id} /> : null}
+                {selectedOrder.status !== 'COMPLETED' && selectedOrder.status !== 'CANCELLED' ? <ActionButton label="Hủy đơn" icon={<FiX />} onClick={() => openCancelModal(selectedOrder.id)} loading={actionLoadingId === selectedOrder.id} /> : null}
               </div>
             </div>
           </div>
         </div>
       ) : null}
+
+      <CancelOrderModal
+        isOpen={cancelModal.open}
+        onClose={() => setCancelModal({ open: false, orderId: null, note: '' })}
+        onConfirm={handleCancelOrder}
+        loading={actionLoadingId === cancelModal.orderId}
+      />
     </div>
   )
 }
@@ -222,7 +312,7 @@ const formatValue = (value) => {
 }
 
 const StatusBadge = ({ value, type = 'order' }) => {
-  const label = type === 'payment' ? PAYMENT_LABELS[value] || value : STATUS_LABELS[value] || value
+  const label = type === 'payment' ? PAYMENT_STATUS_LABELS[value] || value : ORDER_STATUS_LABELS[value] || value
   return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-black text-white">{label}</span>
 }
 

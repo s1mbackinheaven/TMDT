@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { FiBox, FiGrid, FiHome, FiShoppingBag, FiUsers } from 'react-icons/fi'
+import { FiBookOpen, FiBox, FiBell, FiGrid, FiHome, FiShoppingBag, FiUsers } from 'react-icons/fi'
 import { useAuth } from '../../hooks/useAuth'
 
 const linkBase =
@@ -85,6 +85,26 @@ const AdminLayout = () => {
             >
               <FiShoppingBag size={16} />
               Orders
+            </NavLink>
+
+            <NavLink
+              to="/admin/articles"
+              className={({ isActive }) =>
+                `${linkBase} ${isActive ? 'bg-black text-white' : 'text-black/70 hover:bg-black/5'}`
+              }
+            >
+              <FiBookOpen size={16} />
+              Articles
+            </NavLink>
+
+            <NavLink
+              to="/admin/notifications"
+              className={({ isActive }) =>
+                `${linkBase} ${isActive ? 'bg-black text-white' : 'text-black/70 hover:bg-black/5'}`
+              }
+            >
+              <FiBell size={16} />
+              Notifications
             </NavLink>
           </nav>
 

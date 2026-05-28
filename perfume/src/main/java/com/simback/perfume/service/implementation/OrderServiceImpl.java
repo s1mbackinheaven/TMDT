@@ -8,6 +8,7 @@ import com.simback.perfume.payload.responses.OrderResponse;
 import com.simback.perfume.repository.OrderRepository;
 import com.simback.perfume.repository.ProductVariantRepository;
 import com.simback.perfume.repository.UserRepository;
+import com.simback.perfume.service.NotificationService;
 import com.simback.perfume.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,13 +24,26 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final ProductVariantRepository productVariantRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderResponse> getMyOrders(String username) {
+    public List<OrderResponse> getMyOrders(String username, OrderStatus status, OrderPaymentStatus paymentStatus, Instant from, Instant to) {
         User user = resolveUser(username);
-        return orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId())
-                .stream().map(this::toResponse).toList();
+        List<Order> orders = orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+        if (status != null) {
+            orders = orders.stream().filter(order -> order.getStatus() == status).toList();
+        }
+        if (paymentStatus != null) {
+            orders = orders.stream().filter(order -> order.getPaymentStatus() == paymentStatus).toList();
+        }
+        if (from != null) {
+            orders = orders.stream().filter(order -> !order.getCreatedAt().isBefore(from)).toList();
+        }
+        if (to != null) {
+            orders = orders.stream().filter(order -> !order.getCreatedAt().isAfter(to)).toList();
+        }
+        return orders.stream().map(this::toResponse).toList();
     }
 
     @Override
@@ -75,6 +89,7 @@ public class OrderServiceImpl implements OrderService {
         authorizeAdmin(username);
         applyStatus(order, request.getStatus(), request.getAdminNote());
         orderRepository.save(order);
+        notifyStatusChange(order, request.getStatus(), request.getAdminNote());
         return toResponse(order);
     }
 
@@ -90,6 +105,12 @@ public class OrderServiceImpl implements OrderService {
         order.setAdminNote("Đơn hàng đã bị hủy");
         restoreStock(order);
         orderRepository.save(order);
+        notificationService.createForUser(order.getUser().getId(),
+                "Đơn hàng đã bị hủy",
+                "Đơn hàng " + order.getOrderNumber() + " đã bị hủy.",
+                "/account/orders/" + order.getId(),
+                null,
+                NotificationType.ORDER.name());
         return toResponse(order);
     }
 
@@ -104,6 +125,12 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(OrderStatus.COMPLETED);
         order.setAdminNote(composeNote(order.getAdminNote(), "Khách đã xác nhận nhận hàng"));
         orderRepository.save(order);
+        notificationService.createForUser(order.getUser().getId(),
+                "Đã xác nhận nhận hàng",
+                "Bạn đã xác nhận nhận đơn " + order.getOrderNumber() + ".",
+                "/account/orders/" + order.getId(),
+                null,
+                NotificationType.ORDER.name());
         return toResponse(order);
     }
 
@@ -130,6 +157,15 @@ public class OrderServiceImpl implements OrderService {
         if (nextStatus == OrderStatus.COMPLETED) {
             order.setAdminNote(composeNote(order.getAdminNote(), "Hoàn thành đơn hàng"));
         }
+    }
+
+    private void notifyStatusChange(Order order, OrderStatus nextStatus, String adminNote) {
+        String title = "Cập nhật đơn hàng";
+        String message = "Đơn hàng " + order.getOrderNumber() + " đã chuyển sang trạng thái " + nextStatus + ".";
+        if (adminNote != null && !adminNote.isBlank()) {
+            message += " Ghi chú: " + adminNote.trim();
+        }
+        notificationService.createForUser(order.getUser().getId(), title, message, "/account/orders/" + order.getId(), null, NotificationType.ORDER.name());
     }
 
     private boolean isValidTransition(OrderStatus current, OrderStatus next) {

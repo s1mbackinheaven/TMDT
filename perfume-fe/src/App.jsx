@@ -5,6 +5,10 @@ import MainFooter from './components/layout/MainFooter'
 import HeroSlider from './components/home/HeroSlider'
 import FeatureMarquee from './components/home/FeatureMarquee'
 import HomeBestSellerSection from './components/home/HomeBestSellerSection'
+import NewsPage from './pages/news/NewsPage'
+import NewsDetailPage from './pages/news/NewsDetailPage'
+import NotificationsPage from './pages/notifications/NotificationsPage'
+import AdminNotificationsPage from './pages/admin/AdminNotificationsPage'
 import AuthPage from './pages/auth/AuthPage'
 import AccountPage from './pages/accounts/AccountPage'
 import { AuthProvider } from './contexts/AuthContext'
@@ -25,6 +29,7 @@ import AdminUsersPage from './pages/admin/AdminUsersPage'
 import AdminReferencePage from './pages/admin/AdminReferencePage'
 import AdminProductsPage from './pages/admin/products/AdminProductsPage'
 import AdminOrdersPage from './pages/admin/AdminOrdersPage'
+import AdminArticlesPage from './pages/admin/AdminArticlesPage'
 import ProductFormPage from './pages/admin/products/ProductFormPage'
 
 const AppShell = () => {
@@ -48,10 +53,14 @@ const AppShell = () => {
               </>
             }
           />
+          <Route path="/news" element={<NewsPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/auth/forgot" element={<ForgotPasswordPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/auth/verify" element={<VerifyOtpPage />} />
+          <Route path="/news" element={<NewsPage />} />
+          <Route path="/news/:slug" element={<NewsDetailPage />} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/products/:id" element={<ProductDetailPage />} />
           <Route path="/cart" element={<CartPage />} />
@@ -69,6 +78,8 @@ const AppShell = () => {
               <Route path="reference" element={<AdminReferencePage />} />
               <Route path="users" element={<AdminUsersPage />} />
               <Route path="orders" element={<AdminOrdersPage />} />
+              <Route path="articles" element={<AdminArticlesPage />} />
+              <Route path="notifications" element={<AdminNotificationsPage />} />
             </Route>
           </Route>
         </Routes>

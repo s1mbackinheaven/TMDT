@@ -10,6 +10,7 @@ import com.simback.perfume.repository.CartRepository;
 import com.simback.perfume.repository.OrderRepository;
 import com.simback.perfume.repository.ProductVariantRepository;
 import com.simback.perfume.repository.UserRepository;
+import com.simback.perfume.service.NotificationService;
 import com.simback.perfume.service.PayosCheckoutService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.payos.PayOS;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
+import vn.payos.model.webhooks.Webhook;
 import vn.payos.model.webhooks.WebhookData;
 
 import java.math.BigDecimal;
@@ -33,6 +35,7 @@ public class PayosCheckoutServiceImpl implements PayosCheckoutService {
     private final OrderRepository orderRepository;
     private final ProductVariantRepository productVariantRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
     private final PayOS payOS;
 
     @Override
@@ -90,6 +93,13 @@ public class PayosCheckoutServiceImpl implements PayosCheckoutService {
         reserveStock(order);
         cartItemRepository.deleteAllInBatch(cartItemRepository.findByCart(cart));
         cartRepository.save(cart);
+        notificationService.createForUser(
+                order.getUser().getId(),
+                "Đơn hàng mới đã được tạo",
+                "Đơn hàng " + order.getOrderNumber() + " đã được tạo thành công.",
+                "/account/orders/" + order.getId(),
+                order.getItems().isEmpty() ? null : order.getItems().get(0).getThumbnailSnapshot(),
+                NotificationType.ORDER.name());
 
         if (request.getPaymentMethod() == PaymentMethod.COD) {
             log.info("Created COD order {}", order.getOrderNumber());
@@ -109,8 +119,8 @@ public class PayosCheckoutServiceImpl implements PayosCheckoutService {
                 .orderCode(order.getId())
                 .amount(amount)
                 .description(transferContent)
-                .cancelUrl("http://localhost:8080/api/v1/checkout/payos/cancel")
-                .returnUrl("http://localhost:8080/api/v1/checkout/payos/return")
+                .cancelUrl("https://api.culus.io.vn/api/v1/checkout/payos/cancel")
+                .returnUrl("https://api.culus.io.vn/api/v1/checkout/payos/return")
                 .build();
 
         var paymentLink = payOS.paymentRequests().create(paymentRequest);
@@ -128,11 +138,46 @@ public class PayosCheckoutServiceImpl implements PayosCheckoutService {
 
     @Override
     @Transactional
-    public PayosWebhookResponse handleWebhook(Object webhook) {
+    public void cancelOrder(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy order id: " + orderId));
+        
+        // Chỉ hủy nếu đơn hàng chưa thanh toán
+        if (order.getPaymentStatus() != OrderPaymentStatus.PAID && order.getStatus() != OrderStatus.CANCELLED) {
+            order.setStatus(OrderStatus.CANCELLED);
+            order.setAdminNote("Người dùng hủy thanh toán PayOS");
+            orderRepository.save(order);
+            restoreStock(order);
+
+            // Gửi thông báo hủy đơn cho user
+            if (order.getUser() != null) {
+                notificationService.createForUser(
+                        order.getUser().getId(),
+                        "Hủy đơn hàng",
+                        "Đơn hàng " + order.getOrderNumber() + " đã bị hủy do bạn hủy thanh toán.",
+                        "/account/orders/" + order.getId(),
+                        order.getItems().isEmpty() ? null : order.getItems().get(0).getThumbnailSnapshot(),
+                        NotificationType.ORDER.name());
+            }
+        }
+    }
+
+    @Override
+    @Transactional
+    public PayosWebhookResponse handleWebhook(Webhook webhook) {
         log.info("Received PayOS webhook: {}", webhook);
         try {
             WebhookData verified = payOS.webhooks().verify(webhook);
             Long orderId = verified.getOrderCode();
+            
+            // Xử lý webhook giả/test từ PayOS khi gọi api confirm-webhook
+            if ("VQRIO123".equals(verified.getDescription())) {
+                log.info("Bỏ qua cập nhật DB vì đây là Test Webhook từ PayOS (orderCode={})", orderId);
+                return PayosWebhookResponse.builder()
+                        .message("Test webhook OK")
+                        .build();
+            }
+
             Order order = orderRepository.findById(orderId)
                     .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy order id: " + orderId));
 
@@ -140,6 +185,13 @@ public class PayosCheckoutServiceImpl implements PayosCheckoutService {
             order.setPaid(Boolean.TRUE);
             order.setAdminNote("Đã thanh toán");
             orderRepository.save(order);
+            notificationService.createForUser(
+                    order.getUser().getId(),
+                    "Thanh toán thành công",
+                    "Đơn hàng " + order.getOrderNumber() + " đã được thanh toán thành công.",
+                    "/account/orders/" + order.getId(),
+                    order.getItems().isEmpty() ? null : order.getItems().get(0).getThumbnailSnapshot(),
+                    NotificationType.ORDER.name());
 
             return PayosWebhookResponse.builder()
                     .message("Webhook hợp lệ, đơn hàng đã được cập nhật PAID")
@@ -149,7 +201,9 @@ public class PayosCheckoutServiceImpl implements PayosCheckoutService {
                     .build();
         } catch (Exception e) {
             log.error("Webhook PayOS không hợp lệ", e);
-            throw new IllegalArgumentException("Webhook không hợp lệ");
+            return PayosWebhookResponse.builder()
+                    .message("Webhook không hợp lệ: " + e.getMessage())
+                    .build();
         }
     }
 
@@ -203,6 +257,23 @@ public class PayosCheckoutServiceImpl implements PayosCheckoutService {
             variant.setStockQuantity(currentStock - reserved);
             variant.setSoldCount((variant.getSoldCount() == null ? 0 : variant.getSoldCount()) + reserved);
             productVariantRepository.save(variant);
+        }
+    }
+
+    private void restoreStock(Order order) {
+        for (OrderItem item : order.getItems()) {
+            ProductVariant variant = item.getVariant();
+            if (variant != null) {
+                int currentStock = variant.getStockQuantity() == null ? 0 : variant.getStockQuantity();
+                int restored = item.getQuantity() == null ? 0 : item.getQuantity();
+                
+                variant.setStockQuantity(currentStock + restored);
+                
+                int currentSold = variant.getSoldCount() == null ? 0 : variant.getSoldCount();
+                variant.setSoldCount(Math.max(0, currentSold - restored));
+                
+                productVariantRepository.save(variant);
+            }
         }
     }
 }

@@ -7,6 +7,7 @@ import com.simback.perfume.payload.requests.ProductCreateRequest;
 import com.simback.perfume.payload.requests.ProductUpdateRequest;
 import com.simback.perfume.payload.responses.*;
 import com.simback.perfume.repository.*;
+import com.simback.perfume.service.NotificationService;
 import com.simback.perfume.service.ProductService;
 import com.simback.perfume.specification.ProductSpecification;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,7 @@ public class ProductServiceImpl implements ProductService {
     private final CollectionRepository collectionRepository;
     private final ScentFamilyRepository scentFamilyRepository;
     private final TagRepository tagRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -124,6 +126,13 @@ public class ProductServiceImpl implements ProductService {
         }
 
         productRepository.save(product);
+        notificationService.broadcast(
+                "Sản phẩm mới",
+                "Vừa có sản phẩm mới: " + product.getName(),
+                "/products/" + product.getId(),
+                product.getThumbnail(),
+                NotificationType.PRODUCT.name()
+        );
         log.info("Tạo sản phẩm id={}, slug={}", product.getId(), product.getSlug());
         return toProductResponse(product);
     }

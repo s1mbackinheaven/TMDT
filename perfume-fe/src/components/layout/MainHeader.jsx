@@ -1,10 +1,12 @@
 // src/components/layout/MainHeader.jsx
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
-import { FiSearch, FiShoppingCart, FiUser } from 'react-icons/fi'
+import { AnimatePresence, motion } from 'framer-motion'
+import { FiChevronDown, FiSearch, FiShoppingCart, FiUser } from 'react-icons/fi'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { getCartApi } from '../../api/cartApi'
+import { getBrandsApi } from '../../api/filtersApi'
+import NotificationBell from './NotificationBell'
 
 const MainHeader = () => {
   const navigate = useNavigate()
@@ -13,6 +15,10 @@ const MainHeader = () => {
   const [isAtTop, setIsAtTop] = useState(true)
   const [isHidden, setIsHidden] = useState(false)
   const [cartCount, setCartCount] = useState(0)
+  const [brands, setBrands] = useState([])
+  const [brandsLoading, setBrandsLoading] = useState(false)
+  const [brandQuery, setBrandQuery] = useState('')
+  const [brandMenuOpen, setBrandMenuOpen] = useState(false)
   const lastYRef = useRef(0)
   const tickingRef = useRef(false)
   const TOP_THRESHOLD = 8
@@ -34,6 +40,13 @@ const MainHeader = () => {
     navigate('/products')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
+
+  const handleGoNews = (categoryName = '') => {
+    navigate(categoryName ? `/news?categoryName=${encodeURIComponent(categoryName)}` : '/news')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  
 
   const handleGoCart = () => {
     navigate('/cart')
@@ -87,6 +100,21 @@ const MainHeader = () => {
     fetchCartCount()
   }, [location.pathname, location.key])
 
+  useEffect(() => {
+    const loadBrands = async () => {
+      setBrandsLoading(true)
+      try {
+        const data = await getBrandsApi()
+        setBrands(Array.isArray(data) ? data : [])
+      } catch {
+        setBrands([])
+      } finally {
+        setBrandsLoading(false)
+      }
+    }
+    loadBrands()
+  }, [])
+
   const headerVariants = {
     show: { y: 0, opacity: 1 },
     hide: { y: -84, opacity: 0 },
@@ -104,6 +132,26 @@ const MainHeader = () => {
       boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
     },
   }
+
+  const normalizedBrands = useMemo(() => {
+    return [...brands].sort((a, b) => (a?.name || '').localeCompare(b?.name || '', 'vi'))
+  }, [brands])
+
+  const filteredBrands = useMemo(() => {
+    const q = brandQuery.trim().toLowerCase()
+    if (!q) return normalizedBrands
+    return normalizedBrands.filter((brand) => (brand?.name || '').toLowerCase().includes(q))
+  }, [normalizedBrands, brandQuery])
+
+  const brandGroups = useMemo(() => {
+    const groups = {}
+    filteredBrands.forEach((brand) => {
+      const letter = (brand?.name?.[0] || '#').toUpperCase()
+      if (!groups[letter]) groups[letter] = []
+      groups[letter].push(brand)
+    })
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b, 'vi'))
+  }, [filteredBrands])
 
   return (
     <motion.header
@@ -171,20 +219,116 @@ const MainHeader = () => {
             >
               Bộ sưu tập nước hoa
             </button>
-            <button
-              className={`cursor-pointer transition-colors ${
-                isLightOnTop ? 'hover:text-white/80' : 'hover:text-black/60'
-              }`}
-            >
-              Thương hiệu
-            </button>
-            <button
-              className={`cursor-pointer transition-colors ${
-                isLightOnTop ? 'hover:text-white/80' : 'hover:text-black/60'
-              }`}
-            >
-              Tin tức
-            </button>
+            <div className="relative group" onMouseEnter={() => setBrandMenuOpen(true)} onMouseLeave={() => setBrandMenuOpen(false)}>
+              <button
+                className={`cursor-pointer transition-colors inline-flex items-center gap-1 ${
+                  isLightOnTop ? 'hover:text-white/80' : 'hover:text-black/60'
+                }`}
+                onClick={() => navigate('/products')}
+              >
+                Thương hiệu
+                <FiChevronDown size={14} />
+              </button>
+
+              <AnimatePresence>
+                {brandMenuOpen ? (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    transition={{ duration: 0.2, ease: 'easeOut' }}
+                    className="absolute left-1/2 top-full z-50 pt-4 -translate-x-1/2"
+                  >
+                    <div className="w-[min(1280px,calc(100vw-48px))] rounded-[26px] border border-black/10 bg-white shadow-[0_30px_80px_rgba(0,0,0,0.18)] overflow-hidden">
+                      <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-black/5">
+                        <div>
+                          <div className="text-xs uppercase tracking-[0.2em] text-black/40">Thương hiệu</div>
+                          <div className="mt-1 text-lg font-semibold text-black">Chọn theo chữ cái</div>
+                        </div>
+                        <input
+                          value={brandQuery}
+                          onChange={(e) => setBrandQuery(e.target.value)}
+                          placeholder="Tìm thương hiệu..."
+                          className="w-[300px] px-4 py-2.5 text-sm border border-black/10 rounded-xl outline-none focus:border-black/30"
+                        />
+                      </div>
+
+                      <div className="px-6 py-5">
+                        <div className="flex flex-wrap gap-2 mb-5">
+                          <button
+                            type="button"
+                            className="min-w-10 h-9 px-3 rounded-lg text-sm border border-black/10 hover:bg-black hover:text-white transition-colors bg-black text-white"
+                            onClick={() => setBrandQuery('')}
+                          >
+                            All
+                          </button>
+                          {Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ').map((letter) => (
+                            <button
+                              key={letter}
+                              type="button"
+                              className="min-w-10 h-9 px-3 rounded-lg text-sm border border-black/10 hover:bg-black hover:text-white transition-colors"
+                              onClick={() => {
+                                const target = document.getElementById(`brand-letter-${letter}`)
+                                target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                              }}
+                            >
+                              {letter}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="max-h-[420px] overflow-auto pr-2 space-y-8">
+                          {brandsLoading ? (
+                            <div className="py-10 text-sm text-black/55">Đang tải thương hiệu...</div>
+                          ) : brandGroups.length ? (
+                            brandGroups.map(([letter, items]) => (
+                              <div key={letter} id={`brand-letter-${letter}`}>
+                                <div className="mb-4 text-3xl font-semibold text-black">{letter}</div>
+                                <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-x-10 gap-y-4">
+                                  {items.map((brand) => (
+                                    <button
+                                      key={brand.id}
+                                      type="button"
+                                      className="text-left text-[15px] text-black/75 hover:text-black transition-colors"
+                                      onClick={() => {
+                                        setBrandMenuOpen(false)
+                                        navigate(`/products?brandId=${brand.id}`)
+                                        window.scrollTo({ top: 0, behavior: 'smooth' })
+                                      }}
+                                    >
+                                      {brand.name}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="py-10 text-sm text-black/55">Không có thương hiệu phù hợp.</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+            </div>
+            <div className="relative group">
+              <button
+                className={`cursor-pointer transition-colors inline-flex items-center gap-1 ${
+                  isLightOnTop ? 'hover:text-white/80' : 'hover:text-black/60'
+                }`}
+                onClick={() => handleGoNews()}
+              >
+                Tin tức
+                <FiChevronDown size={14} />
+              </button>
+              <div className="absolute left-0 top-full pt-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                <div className="min-w-[240px] rounded-2xl border border-black/10 bg-white shadow-[0_18px_60px_rgba(0,0,0,0.12)] overflow-hidden">
+                  <button type="button" onClick={() => handleGoNews('Kiến thức nước hoa')} className="w-full text-left px-4 py-3 text-sm font-medium text-black hover:bg-black/5 transition-colors">Kiến thức nước hoa</button>
+                  <button type="button" onClick={() => handleGoNews('Review nước hoa')} className="w-full text-left px-4 py-3 text-sm font-medium text-black hover:bg-black/5 transition-colors">Review nước hoa</button>
+                </div>
+              </div>
+            </div>
             <button
               className={`cursor-pointer transition-colors ${
                 isLightOnTop ? 'hover:text-white/80' : 'hover:text-black/60'
@@ -221,6 +365,8 @@ const MainHeader = () => {
                 {cartCount}
               </span>
             </button>
+
+            <NotificationBell isLightOnTop={isLightOnTop} />
 
             {/* Tài khoản */}
             <button

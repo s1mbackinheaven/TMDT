@@ -9,7 +9,7 @@ import java.time.Instant;
 import java.util.List;
 
 public interface OrderService {
-    List<OrderResponse> getMyOrders(String username);
+    List<OrderResponse> getMyOrders(String username, OrderStatus status, OrderPaymentStatus paymentStatus, Instant from, Instant to);
     List<OrderResponse> getAllOrders(OrderStatus status, OrderPaymentStatus paymentStatus, Instant from, Instant to);
     OrderResponse getOrderById(Long orderId, String username);
     OrderResponse updateOrderStatus(Long orderId, OrderStatusUpdateRequest request, String username);

@@ -24,3 +24,8 @@ export const confirmReceivedOrderApi = async (orderId) => {
   const res = await axiosClient.patch(`/orders/${orderId}/received`)
   return res.data
 }
+
+export const cancelOrderApi = async (orderId, payload = {}) => {
+  const res = await axiosClient.patch(`/orders/${orderId}/cancel`, payload)
+  return res.data
+}

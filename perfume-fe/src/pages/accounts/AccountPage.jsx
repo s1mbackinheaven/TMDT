@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { FiChevronDown, FiLogOut, FiPackage, FiUser, FiX } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
-import { getMyOrdersApi, getOrderDetailApi, confirmReceivedOrderApi } from '../../api/orderApi'
+import { cancelOrderApi, getMyOrdersApi, getOrderDetailApi, confirmReceivedOrderApi } from '../../api/orderApi'
+import CancelOrderModal from '../checkout/CancelOrderModal'
 import { getMyUserApi } from '../../api/userApi'
 import { useToast } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -53,9 +54,32 @@ const AccountPage = () => {
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [expandedItems, setExpandedItems] = useState(false)
   const [orderFilters, setOrderFilters] = useState({ status: '', paymentStatus: '', from: '', to: '' })
+  const [cancelModalOpen, setCancelModalOpen] = useState(false)
+  const [cancelLoading, setCancelLoading] = useState(false)
 
   const displayUser = profile || user
   const fullName = useMemo(() => displayUser?.fullName || 'Chưa có tên', [displayUser])
+
+  const buildOrderParams = () => {
+    const params = {}
+    if (orderFilters.status) params.status = orderFilters.status
+    if (orderFilters.paymentStatus) params.paymentStatus = orderFilters.paymentStatus
+    if (orderFilters.from) params.from = new Date(orderFilters.from).toISOString()
+    if (orderFilters.to) params.to = new Date(`${orderFilters.to}T23:59:59.999Z`).toISOString()
+    return params
+  }
+
+  const loadOrders = async () => {
+    setLoadingOrders(true)
+    try {
+      const data = await getMyOrdersApi(buildOrderParams())
+      setOrders(Array.isArray(data) ? data : [])
+    } catch {
+      setOrders([])
+    } finally {
+      setLoadingOrders(false)
+    }
+  }
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -64,24 +88,8 @@ const AccountPage = () => {
 
   useEffect(() => {
     if (activeTab !== 'orders' || !isAuthenticated) return
-    const loadOrders = async () => {
-      setLoadingOrders(true)
-      try {
-        const params = {}
-        if (orderFilters.status) params.status = orderFilters.status
-        if (orderFilters.paymentStatus) params.paymentStatus = orderFilters.paymentStatus
-        if (orderFilters.from) params.from = new Date(orderFilters.from).toISOString()
-        if (orderFilters.to) params.to = new Date(`${orderFilters.to}T23:59:59.999Z`).toISOString()
-        const data = await getMyOrdersApi(params)
-        setOrders(Array.isArray(data) ? data : [])
-      } catch {
-        setOrders([])
-      } finally {
-        setLoadingOrders(false)
-      }
-    }
     loadOrders()
-  }, [activeTab, isAuthenticated, orderFilters])
+  }, [activeTab, isAuthenticated])
 
   const handleLogout = () => {
     logout()
@@ -101,15 +109,25 @@ const AccountPage = () => {
       setSelectedOrder(updated)
       setExpandedItems(false)
       pushToast('Đã xác nhận nhận hàng thành công.')
-      const refreshed = await getMyOrdersApi({
-        ...(orderFilters.status ? { status: orderFilters.status } : {}),
-        ...(orderFilters.paymentStatus ? { paymentStatus: orderFilters.paymentStatus } : {}),
-        ...(orderFilters.from ? { from: new Date(orderFilters.from).toISOString() } : {}),
-        ...(orderFilters.to ? { to: new Date(`${orderFilters.to}T23:59:59.999Z`).toISOString() } : {}),
-      })
-      setOrders(Array.isArray(refreshed) ? refreshed : [])
+      await loadOrders()
     } catch (err) {
       pushToast(err?.response?.data?.message || 'Không thể xác nhận đơn hàng', 'error')
+    }
+  }
+
+  const handleCancelOrder = async (note) => {
+    if (!selectedOrder?.id) return
+    setCancelLoading(true)
+    try {
+      const updated = await cancelOrderApi(selectedOrder.id, { note })
+      setSelectedOrder(updated)
+      setCancelModalOpen(false)
+      pushToast('Đã hủy đơn hàng.')
+      await loadOrders()
+    } catch (err) {
+      pushToast(err?.response?.data?.message || 'Không thể hủy đơn hàng', 'error')
+    } finally {
+      setCancelLoading(false)
     }
   }
 
@@ -167,17 +185,30 @@ const AccountPage = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
-                    <select value={orderFilters.status} onChange={(e) => setOrderFilters((prev) => ({ ...prev, status: e.target.value }))} className="px-4 py-3 rounded-xl border border-black/10 bg-white text-sm outline-none">
-                      <option value="">Tất cả trạng thái</option>
-                      {ORDER_STATUSES.map((status) => <option key={status} value={status}>{ORDER_STATUS_LABELS[status]}</option>)}
-                    </select>
-                    <select value={orderFilters.paymentStatus} onChange={(e) => setOrderFilters((prev) => ({ ...prev, paymentStatus: e.target.value }))} className="px-4 py-3 rounded-xl border border-black/10 bg-white text-sm outline-none">
-                      <option value="">Tất cả thanh toán</option>
-                      {PAYMENT_STATUSES.map((status) => <option key={status} value={status}>{PAYMENT_STATUS_LABELS[status]}</option>)}
-                    </select>
-                    <input type="date" value={orderFilters.from} onChange={(e) => setOrderFilters((prev) => ({ ...prev, from: e.target.value }))} className="px-4 py-3 rounded-xl border border-black/10 bg-white text-sm outline-none" />
-                    <input type="date" value={orderFilters.to} onChange={(e) => setOrderFilters((prev) => ({ ...prev, to: e.target.value }))} className="px-4 py-3 rounded-xl border border-black/10 bg-white text-sm outline-none" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 mb-4 items-end">
+                    <label className="text-xs font-semibold text-black/50">
+                      Trạng thái
+                      <select value={orderFilters.status} onChange={(e) => setOrderFilters((prev) => ({ ...prev, status: e.target.value }))} className="mt-1 w-full px-4 py-3 rounded-xl border border-black/10 bg-white text-sm outline-none">
+                        <option value="">Tất cả trạng thái</option>
+                        {ORDER_STATUSES.map((status) => <option key={status} value={status}>{ORDER_STATUS_LABELS[status]}</option>)}
+                      </select>
+                    </label>
+                    <label className="text-xs font-semibold text-black/50">
+                      Thanh toán
+                      <select value={orderFilters.paymentStatus} onChange={(e) => setOrderFilters((prev) => ({ ...prev, paymentStatus: e.target.value }))} className="mt-1 w-full px-4 py-3 rounded-xl border border-black/10 bg-white text-sm outline-none">
+                        <option value="">Tất cả thanh toán</option>
+                        {PAYMENT_STATUSES.map((status) => <option key={status} value={status}>{PAYMENT_STATUS_LABELS[status]}</option>)}
+                      </select>
+                    </label>
+                    <label className="text-xs font-semibold text-black/50">
+                      Từ ngày
+                      <input type="date" value={orderFilters.from} onChange={(e) => setOrderFilters((prev) => ({ ...prev, from: e.target.value }))} className="mt-1 w-full px-4 py-3 rounded-xl border border-black/10 bg-white text-sm outline-none" />
+                    </label>
+                    <label className="text-xs font-semibold text-black/50">
+                      Đến ngày
+                      <input type="date" value={orderFilters.to} onChange={(e) => setOrderFilters((prev) => ({ ...prev, to: e.target.value }))} className="mt-1 w-full px-4 py-3 rounded-xl border border-black/10 bg-white text-sm outline-none" />
+                    </label>
+                    <button type="button" onClick={loadOrders} className="px-4 py-3 rounded-xl bg-black text-white text-sm font-semibold">Lọc đơn</button>
                   </div>
 
                   {loadingOrders ? (
@@ -191,10 +222,10 @@ const AccountPage = () => {
                               <div className="text-xs uppercase tracking-[0.2em] text-black/40">Mã đơn</div>
                               <div className="mt-1 text-lg font-semibold text-black">#{order.orderNumber}</div>
                             </div>
-                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-black text-white">{order.status}</span>
+                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-black text-white">{ORDER_STATUS_LABELS[order.status] || order.status}</span>
                           </div>
                           <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-black/70">
-                            <div><span className="block text-black/40">Thanh toán</span>{order.paymentMethod}</div>
+                            <div><span className="block text-black/40">Thanh toán</span>{PAYMENT_STATUS_LABELS[order.paymentStatus] || order.paymentStatus}</div>
                             <div><span className="block text-black/40">Tổng tiền</span>{formatVnd(order.grandTotal)}</div>
                           </div>
                         </button>
@@ -222,8 +253,10 @@ const AccountPage = () => {
         </div>
       </div>
 
+      <CancelOrderModal isOpen={cancelModalOpen} onClose={() => setCancelModalOpen(false)} onConfirm={handleCancelOrder} loading={cancelLoading} />
+
       {selectedOrder ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 py-6" onClick={() => setSelectedOrder(null)}>
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 py-6" onClick={() => setSelectedOrder(null)}>
           <div className="w-full max-w-[80vw] max-h-[80vh] overflow-auto rounded-[28px] bg-white shadow-[0_30px_120px_rgba(0,0,0,0.25)] relative" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 z-10 flex items-center justify-between gap-4 px-6 py-5 border-b border-black/5 bg-white/95 backdrop-blur">
               <div>
@@ -285,7 +318,12 @@ const AccountPage = () => {
               </div>
             </div>
 
-            <div className="sticky bottom-0 z-20 mt-6 flex justify-end bg-gradient-to-t from-white via-white to-white/0 pt-6 pb-2">
+            <div className="sticky bottom-0 z-20 mt-6 flex justify-end gap-2 bg-gradient-to-t from-white via-white to-white/0 pt-6 pb-2">
+              {selectedOrder.status !== 'COMPLETED' ? (
+                <button type="button" onClick={() => setCancelModalOpen(true)} className="inline-flex items-center gap-2 px-5 py-3 rounded-full border border-black/10 text-black text-sm font-semibold bg-white">
+                  Hủy đơn
+                </button>
+              ) : null}
               {selectedOrder.status === 'DELIVERED' ? (
                 <button type="button" onClick={handleConfirmReceived} className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-black text-white text-sm font-semibold shadow-[0_12px_30px_rgba(0,0,0,0.22)]">
                   Xác nhận đã nhận hàng
