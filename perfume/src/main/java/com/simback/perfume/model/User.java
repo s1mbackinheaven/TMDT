@@ -61,6 +61,15 @@ public class User implements UserDetails {
     @Builder.Default
     private UserStatus status = UserStatus.ACTIVE;
 
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    @Builder.Default
+    private Integer loyaltyPoints = 0;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, columnDefinition = "varchar(255) default 'BRONZE'")
+    @Builder.Default
+    private LoyaltyTier loyaltyTier = LoyaltyTier.BRONZE;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;

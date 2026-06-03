@@ -57,10 +57,14 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public UserResponse cancelUser(Long userId, String adminUsername, CancelUserRequest request) {
+    public UserResponse toggleUserStatus(Long userId, String adminUsername) {
         ensureAdmin(adminUsername);
         User user = getUser(userId);
-        user.setStatus(UserStatus.CANCELLED);
+        if (user.getStatus() == UserStatus.CANCELLED) {
+            user.setStatus(UserStatus.ACTIVE);
+        } else {
+            user.setStatus(UserStatus.CANCELLED);
+        }
         userRepository.save(user);
         return toResponse(user);
     }
@@ -109,6 +113,8 @@ public class UserServiceImpl implements UserService {
                 .address(user.getAddress())
                 .profilePicture(user.getProfilePicture())
                 .isVerified(user.getIsVerified())
+                .loyaltyPoints(user.getLoyaltyPoints())
+                .loyaltyTier(user.getLoyaltyTier().name())
                 .role(user.getRole())
                 .status(user.getStatus())
                 .build();

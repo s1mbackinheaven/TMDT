@@ -9,9 +9,7 @@ const AdminLayout = () => {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
 
-  const handleGoShop = () => {
-    navigate('/')
-  }
+
 
   const handleLogout = () => {
     logout()
@@ -25,12 +23,7 @@ const AdminLayout = () => {
         <aside className="sticky top-0 h-screen hidden lg:flex flex-col border-r border-black/10 bg-white">
           <div className="px-6 py-5 border-b border-black/10">
             <div className="flex items-center gap-3">
-              <div
-                onClick={handleGoShop}
-                className="flex items-center justify-center w-10 h-10 text-sm font-semibold border border-black/15 rounded-full cursor-pointer hover:bg-black/5"
-              >
-                BACK
-              </div>
+
               <div>
                 <p className="text-sm font-semibold">Quản trị viên</p>
                 <p className="text-xs text-black/50">{user?.email || '—'}</p>
@@ -122,13 +115,7 @@ const AdminLayout = () => {
           </nav>
 
           <div className="px-4 py-4 border-t border-black/10 space-y-2">
-            <button
-              type="button"
-              className="w-full inline-flex items-center justify-center px-4 py-3 text-sm font-semibold text-black bg-white border border-black/10 rounded-xl cursor-pointer hover:bg-black/5 transition-colors"
-              onClick={handleGoShop}
-            >
-              Về trang bán hàng
-            </button>
+
             <button
               type="button"
               className="w-full inline-flex items-center justify-center px-4 py-3 text-sm font-semibold text-white bg-black rounded-xl cursor-pointer hover:bg-black/90 transition-colors"
@@ -152,13 +139,7 @@ const AdminLayout = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-black bg-white border border-black/10 rounded-full cursor-pointer hover:bg-black/5 transition-colors"
-                  onClick={handleGoShop}
-                >
-                  Shop
-                </button>
+
                 <button
                   type="button"
                   className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-black rounded-full cursor-pointer hover:bg-black/90 transition-colors"

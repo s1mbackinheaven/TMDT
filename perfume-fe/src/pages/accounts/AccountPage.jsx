@@ -31,7 +31,7 @@ const PAYMENT_STATUS_LABELS = {
   PAID: 'Đã thanh toán',
 }
 
-const EXCLUDED_PROFILE_FIELDS = new Set(['id', 'profilePicture', 'role', 'status', 'isVerified'])
+const EXCLUDED_PROFILE_FIELDS = new Set(['id', 'profilePicture', 'role', 'status', 'isVerified', 'loyaltyPoints', 'loyaltyTier', 'isOfficiallyEnabled'])
 const FIELD_LABELS = {
   username: 'Tên đăng nhập',
   firstName: 'Họ',
@@ -41,6 +41,83 @@ const FIELD_LABELS = {
   gender: 'Giới tính',
   phoneNumber: 'Số điện thoại',
   address: 'Địa chỉ',
+}
+
+const TIER_INFO = {
+  BRONZE: { label: 'Đồng', color: 'from-[#4a2e15] via-[#a67c52] to-[#3b2313]', textColor: 'text-white', next: 'SILVER', nextPoints: 100 },
+  SILVER: { label: 'Bạc', color: 'from-[#f8f9fa] via-[#d7dce2] to-[#9ca3af]', textColor: 'text-slate-900', next: 'GOLD', nextPoints: 1000 },
+  GOLD: { label: 'Vàng', color: 'from-[#ffd700] to-[#b8860b]', textColor: 'text-white', next: 'PLATINUM', nextPoints: 10000 },
+  PLATINUM: { label: 'Bạch Kim', color: 'from-[#1a1a1a] via-[#2c2c2c] to-[#0a0a0a]', textColor: 'text-white', next: null, nextPoints: null },
+}
+
+const VIPCard = ({ user }) => {
+  const tier = user?.loyaltyTier || 'BRONZE'
+  const points = user?.loyaltyPoints || 0
+  const info = TIER_INFO[tier] || TIER_INFO.BRONZE
+  
+  let progress = 100
+  let pointsNeeded = 0
+  if (info.nextPoints) {
+    let currentBase = 0;
+    if (tier === 'SILVER') currentBase = 100;
+    else if (tier === 'GOLD') currentBase = 1000;
+
+    const range = info.nextPoints - currentBase;
+    const currentPointsInRange = points - currentBase;
+    progress = Math.min(100, Math.max(0, (currentPointsInRange / range) * 100))
+    pointsNeeded = info.nextPoints - points
+  }
+
+  return (
+    <div className={`p-6 md:p-8 rounded-[24px] ${info.textColor || 'text-white'} bg-gradient-to-br ${info.color} shadow-lg relative overflow-hidden mb-8`}>
+      {/* Geometric Overlay for All Cards */}
+      <div className="absolute inset-0 z-0 opacity-[0.15] pointer-events-none" style={{
+        backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 10l80 80M90 10L10 90M50 0v100M0 50h100' stroke='%23ffffff' stroke-width='0.5' fill='none' /%3E%3Ccircle cx='50' cy='50' r='2' fill='%23ffffff' /%3E%3Ccircle cx='10' cy='10' r='1.5' fill='%23ffffff' /%3E%3Ccircle cx='90' cy='90' r='1.5' fill='%23ffffff' /%3E%3Ccircle cx='90' cy='10' r='1.5' fill='%23ffffff' /%3E%3Ccircle cx='10' cy='90' r='1.5' fill='%23ffffff' /%3E%3C/svg%3E")`,
+        backgroundSize: '80px 80px',
+        mixBlendMode: 'overlay'
+      }} />
+      
+      {/* Shine effect for all metallic cards */}
+      <motion.div 
+        initial={{ x: '-150%' }}
+        animate={{ x: '250%' }}
+        transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut', repeatDelay: 1.5 }}
+        className={`absolute inset-0 z-0 w-1/2 bg-gradient-to-r from-transparent ${tier === 'PLATINUM' ? 'via-white/20' : 'via-white/60'} to-transparent skew-x-[30deg]`}
+      />
+      <div className="absolute -top-10 -right-10 opacity-10 pointer-events-none">
+        <FiUser size={200} />
+      </div>
+      <div className="relative z-10">
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest opacity-80 mb-1">Thẻ Thành Viên</p>
+            <h2 className="text-3xl font-bold tracking-tight">{info.label}</h2>
+          </div>
+          <div className="text-right">
+            <p className="text-xs font-semibold uppercase tracking-widest opacity-80 mb-1">Điểm Tích Lũy</p>
+            <h2 className="text-3xl font-bold tracking-tight">{points} <span className="text-lg opacity-80">pts</span></h2>
+          </div>
+        </div>
+
+        {info.next && (
+          <div className="mt-8">
+            <div className="flex justify-between items-end mb-2 text-sm font-medium opacity-90">
+              <span>Còn {pointsNeeded} điểm nữa để lên hạng {TIER_INFO[info.next].label}</span>
+              <span>{info.nextPoints} pts</span>
+            </div>
+            <div className="w-full h-2 bg-black/20 rounded-full overflow-hidden backdrop-blur-sm">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${progress}%` }}
+                transition={{ duration: 1, ease: "easeOut" }}
+                className="h-full bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 const AccountPage = () => {
@@ -53,6 +130,7 @@ const AccountPage = () => {
   const [loadingOrders, setLoadingOrders] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [expandedItems, setExpandedItems] = useState(false)
+  const [orderSearchQuery, setOrderSearchQuery] = useState('')
   const [orderFilters, setOrderFilters] = useState({ status: '', paymentStatus: '', from: '', to: '' })
   const [cancelModalOpen, setCancelModalOpen] = useState(false)
   const [cancelLoading, setCancelLoading] = useState(false)
@@ -68,6 +146,11 @@ const AccountPage = () => {
     if (orderFilters.to) params.to = new Date(`${orderFilters.to}T23:59:59.999Z`).toISOString()
     return params
   }
+
+  const filteredOrders = useMemo(() => {
+    if (!orderSearchQuery) return orders
+    return orders.filter(o => String(o.orderNumber).toLowerCase().includes(orderSearchQuery.toLowerCase()))
+  }, [orders, orderSearchQuery])
 
   const loadOrders = async () => {
     setLoadingOrders(true)
@@ -110,6 +193,7 @@ const AccountPage = () => {
       setExpandedItems(false)
       pushToast('Đã xác nhận nhận hàng thành công.')
       await loadOrders()
+      getMyUserApi().then(setProfile).catch(() => setProfile(null))
     } catch (err) {
       pushToast(err?.response?.data?.message || 'Không thể xác nhận đơn hàng', 'error')
     }
@@ -169,11 +253,14 @@ const AccountPage = () => {
 
             <section className="p-6 md:p-8">
               {activeTab === 'profile' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {profileEntries.map(([key, value]) => (
-                    <InfoCard key={key} label={FIELD_LABELS[key] || key} value={formatValue(value, key)} />
-                  ))}
-                </div>
+                <>
+                  <VIPCard user={displayUser} />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {profileEntries.map(([key, value]) => (
+                      <InfoCard key={key} label={FIELD_LABELS[key] || key} value={formatValue(value, key)} />
+                    ))}
+                  </div>
+                </>
               )}
 
               {activeTab === 'orders' && (
@@ -185,7 +272,11 @@ const AccountPage = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 mb-4 items-end">
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3 mb-4 items-end">
+                    <label className="text-xs font-semibold text-black/50">
+                      Tìm mã đơn
+                      <input type="text" placeholder="Tìm mã..." value={orderSearchQuery} onChange={(e) => setOrderSearchQuery(e.target.value)} className="mt-1 w-full px-4 py-3 rounded-xl border border-black/10 bg-white text-sm outline-none" />
+                    </label>
                     <label className="text-xs font-semibold text-black/50">
                       Trạng thái
                       <select value={orderFilters.status} onChange={(e) => setOrderFilters((prev) => ({ ...prev, status: e.target.value }))} className="mt-1 w-full px-4 py-3 rounded-xl border border-black/10 bg-white text-sm outline-none">
@@ -213,9 +304,9 @@ const AccountPage = () => {
 
                   {loadingOrders ? (
                     <div className="py-12 text-center text-black/55">Đang tải đơn hàng...</div>
-                  ) : orders.length ? (
+                  ) : filteredOrders.length ? (
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                      {orders.map((order) => (
+                      {filteredOrders.map((order) => (
                         <button key={order.id} type="button" onClick={() => openOrderDetail(order.id)} className="text-left p-5 rounded-3xl border border-black/5 bg-white hover:shadow-lg hover:-translate-y-0.5 transition-all">
                           <div className="flex items-start justify-between gap-3">
                             <div>

@@ -20,6 +20,11 @@ export const updateOrderStatusApi = async (orderId, payload) => {
   return res.data
 }
 
+export const updateOrderPaymentStatusApi = async (orderId, payload) => {
+  const res = await axiosClient.patch(`/orders/${orderId}/payment-status`, payload)
+  return res.data
+}
+
 export const confirmReceivedOrderApi = async (orderId) => {
   const res = await axiosClient.patch(`/orders/${orderId}/received`)
   return res.data

@@ -59,6 +59,14 @@ public class CheckoutDraft {
     @Column(name = "grand_total", precision = 14, scale = 2, nullable = false)
     private BigDecimal grandTotal;
 
+    @Column(name = "earned_points", nullable = false, columnDefinition = "integer default 0")
+    @Builder.Default
+    private Integer earnedPoints = 0;
+
+    @Column(name = "loyalty_discount_amount", precision = 14, scale = 2, nullable = false, columnDefinition = "numeric(14,2) default 0.00")
+    @Builder.Default
+    private BigDecimal loyaltyDiscountAmount = BigDecimal.ZERO;
+
     @Column(name = "recipient_name")
     private String recipientName;
 

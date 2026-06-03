@@ -95,6 +95,39 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
+    public OrderResponse updateOrderPaymentStatus(Long orderId, com.simback.perfume.payload.requests.OrderPaymentStatusUpdateRequest request, String username) {
+        Order order = getOrder(orderId);
+        authorizeAdmin(username);
+        
+        OrderPaymentStatus currentPaymentStatus = order.getPaymentStatus();
+        OrderPaymentStatus nextPaymentStatus = request.getPaymentStatus();
+        
+        if (currentPaymentStatus != nextPaymentStatus) {
+            order.setPaymentStatus(nextPaymentStatus);
+            if (nextPaymentStatus == OrderPaymentStatus.PAID) {
+                order.setPaid(Boolean.TRUE);
+                order.setAdminNote(composeNote(order.getAdminNote(), "Đã thanh toán (Cập nhật thủ công)"));
+            } else if (nextPaymentStatus == OrderPaymentStatus.UNPAID) {
+                order.setPaid(Boolean.FALSE);
+                order.setAdminNote(composeNote(order.getAdminNote(), "Chưa thanh toán (Cập nhật thủ công)"));
+            }
+        }
+        
+        if (request.getAdminNote() != null && !request.getAdminNote().isBlank()) {
+            order.setAdminNote(request.getAdminNote().trim());
+        }
+        
+        orderRepository.save(order);
+        
+        String title = "Cập nhật thanh toán";
+        String message = "Thanh toán đơn hàng " + order.getOrderNumber() + " đã được cập nhật thành: " + (nextPaymentStatus == OrderPaymentStatus.PAID ? "Đã thanh toán" : "Chưa thanh toán");
+        notificationService.createForUser(order.getUser().getId(), title, message, "/account/orders/" + order.getId(), null, NotificationType.ORDER.name());
+        
+        return toResponse(order);
+    }
+
+    @Override
+    @Transactional
     public OrderResponse cancelOrder(Long orderId, String username) {
         Order order = getOrder(orderId);
         authorizeAccess(order, username);
@@ -122,8 +155,7 @@ public class OrderServiceImpl implements OrderService {
         if (order.getStatus() != OrderStatus.DELIVERED) {
             throw new IllegalArgumentException("Chỉ có thể xác nhận khi đơn đã được giao");
         }
-        order.setStatus(OrderStatus.COMPLETED);
-        order.setAdminNote(composeNote(order.getAdminNote(), "Khách đã xác nhận nhận hàng"));
+        applyStatus(order, OrderStatus.COMPLETED, "Khách đã xác nhận nhận hàng");
         orderRepository.save(order);
         notificationService.createForUser(order.getUser().getId(),
                 "Đã xác nhận nhận hàng",
@@ -156,6 +188,11 @@ public class OrderServiceImpl implements OrderService {
         }
         if (nextStatus == OrderStatus.COMPLETED) {
             order.setAdminNote(composeNote(order.getAdminNote(), "Hoàn thành đơn hàng"));
+            
+            User user = order.getUser();
+            user.setLoyaltyPoints(user.getLoyaltyPoints() + order.getEarnedPoints());
+            user.setLoyaltyTier(LoyaltyTier.calculateTier(user.getLoyaltyPoints()));
+            userRepository.save(user);
         }
     }
 
@@ -255,6 +292,8 @@ public class OrderServiceImpl implements OrderService {
                 .paid(order.getPaid())
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
+                .earnedPoints(order.getEarnedPoints())
+                .loyaltyDiscountAmount(order.getLoyaltyDiscountAmount())
                 .items(order.getItems().stream().map(this::toItemResponse).toList())
                 .build();
     }

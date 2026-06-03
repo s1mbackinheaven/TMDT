@@ -39,10 +39,9 @@ public class UserController {
         return ResponseEntity.ok(userService.updateMyProfile(resolveUsername(), request));
     }
 
-    @PatchMapping("/{userId}/cancel")
-    public ResponseEntity<UserResponse> cancelUser(@PathVariable Long userId,
-                                                   @Valid @RequestBody CancelUserRequest request) {
-        return ResponseEntity.ok(userService.cancelUser(userId, resolveUsername(), request));
+    @PatchMapping("/{userId}/toggle-status")
+    public ResponseEntity<UserResponse> toggleUserStatus(@PathVariable Long userId) {
+        return ResponseEntity.ok(userService.toggleUserStatus(userId, resolveUsername()));
     }
 
     @PatchMapping("/me/cancel")

@@ -47,12 +47,22 @@ public class PayosCheckoutServiceImpl implements PayosCheckoutService {
             throw new IllegalArgumentException("Giỏ hàng đang trống");
         }
 
+        BigDecimal loyaltyDiscountRate = BigDecimal.ZERO;
+        if (user != null && user.getLoyaltyTier() != null) {
+            loyaltyDiscountRate = BigDecimal.valueOf(user.getLoyaltyTier().getDiscountRate());
+        }
+
         BigDecimal subtotal = cart.getItems().stream()
                 .map(CartItem::getLineSubtotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal vatAmount = subtotal.add(SHIPPING_FEE).multiply(VAT_RATE)
+
+        BigDecimal loyaltyDiscountAmount = subtotal.multiply(loyaltyDiscountRate).setScale(2, java.math.RoundingMode.HALF_UP);
+        BigDecimal discountedSubtotal = subtotal.subtract(loyaltyDiscountAmount);
+
+        BigDecimal vatAmount = discountedSubtotal.add(SHIPPING_FEE).multiply(VAT_RATE)
                 .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
-        BigDecimal grandTotal = subtotal.add(SHIPPING_FEE).add(vatAmount);
+        BigDecimal grandTotal = discountedSubtotal.add(SHIPPING_FEE).add(vatAmount);
+        Integer earnedPoints = grandTotal.divide(new BigDecimal("10000"), 0, java.math.RoundingMode.DOWN).intValue();
 
         Order order = Order.builder()
                 .orderNumber(buildOrderNumber())
@@ -65,8 +75,10 @@ public class PayosCheckoutServiceImpl implements PayosCheckoutService {
                 .vatRate(VAT_RATE)
                 .vatAmount(vatAmount)
                 .shippingFee(SHIPPING_FEE)
-                .discountTotal(BigDecimal.ZERO)
+                .discountTotal(loyaltyDiscountAmount)
                 .grandTotal(grandTotal)
+                .loyaltyDiscountAmount(loyaltyDiscountAmount)
+                .earnedPoints(earnedPoints)
                 .recipientName(resolveRecipientName(request, user))
                 .recipientPhone(request.getRecipientPhone().trim())
                 .recipientEmail(request.getRecipientEmail())

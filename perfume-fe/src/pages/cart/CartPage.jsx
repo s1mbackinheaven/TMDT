@@ -3,6 +3,7 @@ import { FiMinus, FiPlus, FiShoppingBag, FiTrash2 } from 'react-icons/fi'
 import { Link, useNavigate } from 'react-router-dom'
 import { deleteCartItemApi, getCartApi, updateCartItemApi } from '../../api/cartApi'
 import { useToast } from '../../contexts/ToastContext'
+import { useAuth } from '../../hooks/useAuth'
 
 const formatVnd = (value) => new Intl.NumberFormat('vi-VN').format(Number(value || 0)) + ' đ'
 
@@ -78,6 +79,24 @@ const CartPage = () => {
   const selectedItems = useMemo(() => items.filter((item) => selectedIds.includes(item.id)), [items, selectedIds])
 
   const subtotal = useMemo(() => selectedItems.reduce((sum, item) => sum + Number(item.lineSubtotal || 0), 0), [selectedItems])
+
+  const { user, refreshUser } = useAuth()
+  
+  useEffect(() => {
+    refreshUser?.()
+  }, [])
+
+  const TIER_DISCOUNTS = { BRONZE: 0, SILVER: 0.05, GOLD: 0.10, PLATINUM: 0.15 }
+  const TIER_LABELS = { BRONZE: 'Đồng', SILVER: 'Bạc', GOLD: 'Vàng', PLATINUM: 'Bạch Kim' }
+  const tier = user?.loyaltyTier || 'BRONZE'
+  const discountRate = TIER_DISCOUNTS[tier] || 0
+  const loyaltyDiscountAmount = subtotal * discountRate
+  const discountedSubtotal = subtotal - loyaltyDiscountAmount
+  
+  const shippingFee = discountedSubtotal >= 1000000 ? 0 : 30000
+  const vatAmount = (discountedSubtotal + shippingFee) * 0.10
+  const total = selectedItems.length > 0 ? discountedSubtotal + shippingFee + vatAmount : 0
+  const earnedPoints = Math.floor(total / 10000)
 
   const handleToggleItem = (id) => {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
@@ -279,7 +298,23 @@ const CartPage = () => {
             <div className="mt-4 space-y-3 text-sm">
               <div className="flex items-center justify-between"><span className="text-black/60">Sản phẩm đã chọn</span><span className="font-semibold">{selectedItems.length}</span></div>
               <div className="flex items-center justify-between"><span className="text-black/60">Tạm tính</span><span className="font-semibold">{formatVnd(subtotal)}</span></div>
-              <div className="flex items-center justify-between"><span className="text-black/60">Tổng đơn</span><span className="font-semibold">{formatVnd(cart?.grandTotal)}</span></div>
+              
+              {selectedItems.length > 0 && (
+                <div className={`flex items-center justify-between ${loyaltyDiscountAmount > 0 ? 'text-green-600' : 'text-black/60'}`}>
+                  <span>Giảm giá VIP ({TIER_LABELS[tier]})</span>
+                  <span className="font-semibold">{loyaltyDiscountAmount > 0 ? `-${formatVnd(loyaltyDiscountAmount)}` : '0 đ'}</span>
+                </div>
+              )}
+              
+              <div className="flex items-center justify-between"><span className="text-black/60">Phí ship dự kiến</span><span className="font-semibold">{formatVnd(shippingFee)}</span></div>
+              <div className="flex items-center justify-between"><span className="text-black/60">Thuế VAT (10%)</span><span className="font-semibold">{formatVnd(vatAmount)}</span></div>
+              <div className="pt-3 border-t border-black/10 flex items-center justify-between"><span className="font-medium text-black">Tổng đơn</span><span className="font-semibold text-xl">{formatVnd(total)}</span></div>
+              
+              {earnedPoints > 0 && selectedItems.length > 0 && (
+                <div className="mt-4 p-3 bg-gradient-to-r from-[#ffd700]/10 to-[#b8860b]/10 rounded-xl border border-[#ffd700]/30 text-center">
+                  <p className="text-[#b8860b] text-xs font-semibold">✨ Mua sẽ nhận {earnedPoints} điểm thưởng</p>
+                </div>
+              )}
             </div>
             <button type="button" onClick={() => navigate('/checkout', { state: { selectedIds, cart } })} disabled={!selectedItems.length} className="mt-5 w-full px-5 py-3 text-sm font-semibold text-white bg-black rounded-full disabled:opacity-40 hover:bg-black/90 transition-colors">Thanh toán</button>
           </aside>

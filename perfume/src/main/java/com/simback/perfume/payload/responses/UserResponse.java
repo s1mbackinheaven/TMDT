@@ -23,6 +23,8 @@ public class UserResponse {
     private String address;
     private String profilePicture;
     private Boolean isVerified;
+    private Integer loyaltyPoints;
+    private String loyaltyTier;
     private Role role;
     private UserStatus status;
 }

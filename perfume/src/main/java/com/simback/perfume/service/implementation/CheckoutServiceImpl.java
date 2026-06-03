@@ -53,11 +53,19 @@ public class CheckoutServiceImpl implements CheckoutService {
             subtotal = subtotal.add(line);
             itemsCount += item.getQuantity();
         }
-        BigDecimal shippingFee = subtotal.compareTo(FREE_SHIPPING_THRESHOLD) >= 0 ? BigDecimal.ZERO
+        BigDecimal loyaltyDiscountRate = BigDecimal.ZERO;
+        if (user != null && user.getLoyaltyTier() != null) {
+            loyaltyDiscountRate = BigDecimal.valueOf(user.getLoyaltyTier().getDiscountRate());
+        }
+        BigDecimal loyaltyDiscountAmount = subtotal.multiply(loyaltyDiscountRate).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal discountedSubtotal = subtotal.subtract(loyaltyDiscountAmount);
+
+        BigDecimal shippingFee = discountedSubtotal.compareTo(FREE_SHIPPING_THRESHOLD) >= 0 ? BigDecimal.ZERO
                 : STANDARD_SHIPPING_FEE;
-        BigDecimal vatAmount = subtotal.add(shippingFee).multiply(VAT_RATE)
+        BigDecimal vatAmount = discountedSubtotal.add(shippingFee).multiply(VAT_RATE)
                 .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-        BigDecimal grandTotal = subtotal.add(shippingFee).add(vatAmount);
+        BigDecimal grandTotal = discountedSubtotal.add(shippingFee).add(vatAmount);
+        Integer earnedPoints = grandTotal.divide(new BigDecimal("10000"), 0, RoundingMode.DOWN).intValue();
         String draftNumber = "CHK-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
 
         CheckoutDraft draft = CheckoutDraft.builder()
@@ -70,8 +78,10 @@ public class CheckoutServiceImpl implements CheckoutService {
                 .vatRate(VAT_RATE)
                 .vatAmount(vatAmount)
                 .shippingFee(shippingFee)
-                .discountTotal(BigDecimal.ZERO)
+                .discountTotal(loyaltyDiscountAmount)
                 .grandTotal(grandTotal)
+                .earnedPoints(earnedPoints)
+                .loyaltyDiscountAmount(loyaltyDiscountAmount)
                 .recipientName(request.getRecipientName().trim())
                 .recipientPhone(request.getRecipientPhone().trim())
                 .recipientEmail(request.getRecipientEmail())
@@ -112,6 +122,8 @@ public class CheckoutServiceImpl implements CheckoutService {
                 .vatRate(VAT_RATE)
                 .vatAmount(vatAmount)
                 .grandTotal(grandTotal)
+                .earnedPoints(earnedPoints)
+                .loyaltyDiscountAmount(loyaltyDiscountAmount)
                 .itemsCount(itemsCount)
                 .items(cart.getItems().stream().map(this::toItemResponse).toList())
                 .build();
@@ -139,6 +151,8 @@ public class CheckoutServiceImpl implements CheckoutService {
                 .shippingFee(draft.getShippingFee())
                 .discountTotal(draft.getDiscountTotal())
                 .grandTotal(draft.getGrandTotal())
+                .earnedPoints(draft.getEarnedPoints())
+                .loyaltyDiscountAmount(draft.getLoyaltyDiscountAmount())
                 .recipientName(draft.getRecipientName())
                 .recipientPhone(draft.getRecipientPhone())
                 .recipientEmail(draft.getRecipientEmail())

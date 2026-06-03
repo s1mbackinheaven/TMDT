@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { FiCheckCircle, FiEye, FiSend, FiTruck, FiX } from 'react-icons/fi'
-import { getAllOrdersApi, updateOrderStatusApi } from '../../api/orderApi'
+import { FiCheckCircle, FiEye, FiSend, FiTruck, FiX, FiDollarSign } from 'react-icons/fi'
+import { getAllOrdersApi, updateOrderStatusApi, updateOrderPaymentStatusApi } from '../../api/orderApi'
 import OrderActionModal from '../checkout/OrderActionModal'
 import CancelOrderModal from '../order/CancelOrderModal'
 
@@ -38,6 +38,8 @@ const FIELD_LABELS = {
   note: 'Ghi chú',
   adminNote: 'Ghi chú admin',
   paid: 'Đã thanh toán',
+  earnedPoints: 'Điểm thưởng (Dự kiến/Đã nhận)',
+  loyaltyDiscountAmount: 'Giảm giá VIP',
   createdAt: 'Ngày tạo',
   updatedAt: 'Ngày cập nhật',
 }
@@ -71,6 +73,7 @@ const AdminOrdersPage = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [selectedOrder, setSelectedOrder] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const [filters, setFilters] = useState({ status: '', paymentStatus: '', from: '', to: '' })
   const [actionLoadingId, setActionLoadingId] = useState(null)
   const [actionModal, setActionModal] = useState({ open: false, orderId: null, status: '', note: '', mode: 'status' })
@@ -113,16 +116,31 @@ const AdminOrdersPage = () => {
     })
   }
 
+  const openPaymentModal = (orderId, paymentStatus) => {
+    const current = orders.find((o) => o.id === orderId)
+    setActionModal({
+      open: true,
+      orderId,
+      status: paymentStatus,
+      note: current?.adminNote || '',
+      mode: 'payment',
+    })
+  }
+
   const openCancelModal = (orderId) => {
     const current = orders.find((o) => o.id === orderId)
     setCancelModal({ open: true, orderId, note: current?.adminNote || '' })
   }
 
   const updateStatus = async () => {
-    const { orderId, status, note } = actionModal
+    const { orderId, status, note, mode } = actionModal
     setActionLoadingId(orderId)
     try {
-      await updateOrderStatusApi(orderId, { status, adminNote: note || '' })
+      if (mode === 'payment') {
+        await updateOrderPaymentStatusApi(orderId, { paymentStatus: status, adminNote: note || '' })
+      } else {
+        await updateOrderStatusApi(orderId, { status, adminNote: note || '' })
+      }
       setActionModal({ open: false, orderId: null, status: '', note: '', mode: 'status' })
       await loadOrders()
       if (selectedOrder?.id === orderId) {
@@ -130,7 +148,7 @@ const AdminOrdersPage = () => {
         setSelectedOrder(refreshed.find((o) => o.id === orderId) || null)
       }
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || 'Không cập nhật được trạng thái đơn')
+      setError(err?.response?.data?.message || err?.message || 'Không cập nhật được đơn hàng')
     } finally {
       setActionLoadingId(null)
     }
@@ -159,6 +177,11 @@ const AdminOrdersPage = () => {
     return Object.entries(selectedOrder).filter(([key]) => !['items'].includes(key))
   }, [selectedOrder])
 
+  const filteredOrders = useMemo(() => {
+    if (!searchQuery) return orders
+    return orders.filter(o => String(o.orderNumber).toLowerCase().includes(searchQuery.toLowerCase()))
+  }, [orders, searchQuery])
+
   const formatOrderValue = (key, value) => {
     if (key === 'createdAt' || key === 'updatedAt') return formatVietnamDateTime(value)
     if (key === 'status') return ORDER_STATUS_LABELS[value] || value
@@ -167,6 +190,8 @@ const AdminOrdersPage = () => {
       const methods = { COD: 'Trả tiền khi nhận hàng', BANK_TRANSFER: 'Chuyển khoản / QR PayOS' }
       return methods[value] || value
     }
+    if (key === 'earnedPoints') return `${value} điểm`
+    if (key === 'loyaltyDiscountAmount' && value > 0) return `-${formatVnd(value)}`
     return formatValue(value)
   }
 
@@ -179,7 +204,11 @@ const AdminOrdersPage = () => {
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 bg-white p-4 rounded-2xl border border-black/5 pointer-events-auto relative z-10">
+      <div className="mt-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3 bg-white p-4 rounded-2xl border border-black/5 pointer-events-auto relative z-10">
+        <label className="text-xs font-semibold text-black/50">
+          Tìm mã đơn
+          <input type="text" placeholder="Tìm mã..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="mt-1 w-full px-4 py-3 rounded-xl border border-black/10 bg-white text-sm outline-none" />
+        </label>
         <label className="text-xs font-semibold text-black/50">
           Trạng thái
           <select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))} className="mt-1 w-full px-4 py-3 rounded-xl border border-black/10 bg-white text-sm">
@@ -210,7 +239,7 @@ const AdminOrdersPage = () => {
       <div className="mt-6 bg-white border border-black/5 rounded-2xl overflow-hidden">
         {loading ? <div className="p-6 text-sm text-black/60">Đang tải danh sách đơn hàng...</div> : null}
         <div className="divide-y divide-black/5">
-          {orders.map((order) => (
+          {filteredOrders.map((order) => (
             <div key={order.id} className="p-4 md:p-5 flex items-center justify-between gap-4 flex-wrap">
               <div>
                 <div className="font-semibold text-black">#{order.orderNumber}</div>
@@ -232,8 +261,8 @@ const AdminOrdersPage = () => {
 
       <OrderActionModal
         isOpen={actionModal.open}
-        title="Cập nhật đơn hàng"
-        description={`Chuyển sang trạng thái ${STATUS_LABELS[actionModal.status] || actionModal.status}`}
+        title={actionModal.mode === 'payment' ? "Cập nhật thanh toán" : "Cập nhật trạng thái đơn"}
+        description={actionModal.mode === 'payment' ? `Đổi thanh toán thành: ${PAYMENT_STATUS_LABELS[actionModal.status]}` : `Chuyển sang trạng thái: ${STATUS_LABELS[actionModal.status] || actionModal.status}`}
         note={actionModal.note}
         setNote={(note) => setActionModal((prev) => ({ ...prev, note }))}
         onClose={() => setActionModal({ open: false, orderId: null, status: '', note: '', mode: 'status' })}
@@ -285,7 +314,10 @@ const AdminOrdersPage = () => {
                 {selectedOrder.status === 'PENDING_CONFIRMATION' ? <ActionButton label="Xác nhận đơn" icon={<FiSend />} onClick={() => openActionModal(selectedOrder.id, 'PROCESSING')} loading={actionLoadingId === selectedOrder.id} /> : null}
                 {selectedOrder.status === 'PROCESSING' ? <ActionButton label="Chuyển giao" icon={<FiTruck />} onClick={() => openActionModal(selectedOrder.id, 'SHIPPED')} loading={actionLoadingId === selectedOrder.id} /> : null}
                 {selectedOrder.status === 'SHIPPED' ? <ActionButton label="Đánh dấu đã giao" icon={<FiCheckCircle />} onClick={() => openActionModal(selectedOrder.id, 'DELIVERED')} loading={actionLoadingId === selectedOrder.id} /> : null}
-                {selectedOrder.status === 'PENDING_CONFIRMATION' || selectedOrder.status === 'PROCESSING' ? <ActionButton label="Hủy đơn" icon={<FiX />} onClick={() => openCancelModal(selectedOrder.id)} loading={actionLoadingId === selectedOrder.id} /> : null}
+                
+                {selectedOrder.paymentStatus === 'UNPAID' ? <ActionButton label="Xác nhận đã thu tiền" icon={<FiDollarSign />} onClick={() => openPaymentModal(selectedOrder.id, 'PAID')} loading={actionLoadingId === selectedOrder.id} /> : null}
+                {selectedOrder.paymentStatus === 'PAID' ? <ActionButton label="Đánh dấu chưa thanh toán" icon={<FiDollarSign />} onClick={() => openPaymentModal(selectedOrder.id, 'UNPAID')} loading={actionLoadingId === selectedOrder.id} /> : null}
+
                 {selectedOrder.status !== 'COMPLETED' && selectedOrder.status !== 'CANCELLED' ? <ActionButton label="Hủy đơn" icon={<FiX />} onClick={() => openCancelModal(selectedOrder.id)} loading={actionLoadingId === selectedOrder.id} /> : null}
               </div>
             </div>

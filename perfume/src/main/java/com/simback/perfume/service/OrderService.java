@@ -13,6 +13,7 @@ public interface OrderService {
     List<OrderResponse> getAllOrders(OrderStatus status, OrderPaymentStatus paymentStatus, Instant from, Instant to);
     OrderResponse getOrderById(Long orderId, String username);
     OrderResponse updateOrderStatus(Long orderId, OrderStatusUpdateRequest request, String username);
+    OrderResponse updateOrderPaymentStatus(Long orderId, com.simback.perfume.payload.requests.OrderPaymentStatusUpdateRequest request, String username);
     OrderResponse cancelOrder(Long orderId, String username);
     OrderResponse confirmReceived(Long orderId, String username);
 }

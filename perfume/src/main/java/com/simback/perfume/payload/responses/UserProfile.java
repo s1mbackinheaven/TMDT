@@ -22,4 +22,6 @@ public class UserProfile {
     private String address;
     private String profilePicture;
     private Boolean isOfficiallyEnabled;
+    private Integer loyaltyPoints;
+    private String loyaltyTier;
 }

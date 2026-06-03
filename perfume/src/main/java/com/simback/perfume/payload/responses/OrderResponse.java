@@ -40,5 +40,7 @@ public class OrderResponse {
     private Boolean paid;
     private Instant createdAt;
     private Instant updatedAt;
+    private Integer earnedPoints;
+    private BigDecimal loyaltyDiscountAmount;
     private List<OrderItemResponse> items;
 }

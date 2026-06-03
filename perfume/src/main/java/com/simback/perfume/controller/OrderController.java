@@ -48,6 +48,12 @@ public class OrderController {
         return ResponseEntity.ok(orderService.updateOrderStatus(orderId, request, resolveUsername()));
     }
 
+    @PatchMapping("/{orderId}/payment-status")
+    public ResponseEntity<OrderResponse> updateOrderPaymentStatus(@PathVariable Long orderId,
+                                                                  @Valid @RequestBody com.simback.perfume.payload.requests.OrderPaymentStatusUpdateRequest request) {
+        return ResponseEntity.ok(orderService.updateOrderPaymentStatus(orderId, request, resolveUsername()));
+    }
+
     @PatchMapping("/{orderId}/cancel")
     public ResponseEntity<OrderResponse> cancelOrder(@PathVariable Long orderId) {
         return ResponseEntity.ok(orderService.cancelOrder(orderId, resolveUsername()));

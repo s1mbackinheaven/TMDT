@@ -1,5 +1,5 @@
 import './index.css'
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation, Navigate, Outlet } from 'react-router-dom'
 import MainHeader from './components/layout/MainHeader'
 import MainFooter from './components/layout/MainFooter'
 import HeroSlider from './components/home/HeroSlider'
@@ -38,6 +38,18 @@ import AdminCampaignsPage from './pages/admin/campaigns/AdminCampaignsPage'
 import Chatbot from './components/common/Chatbot'
 import PromoPopup from './components/common/PromoPopup'
 import CampaignPopup from './components/common/CampaignPopup'
+
+const AdminDomainGuard = () => {
+  const hostname = window.location.hostname
+  // Allow localhost for dev, but strictly require admin.culus.io.vn in production
+  const isAllowed = hostname === 'admin.culus.io.vn' || hostname === 'localhost' || hostname === '127.0.0.1'
+  
+  if (!isAllowed) {
+    return <Navigate to="/" replace />
+  }
+  
+  return <Outlet />
+}
 
 const AppShell = () => {
   const location = useLocation()
@@ -78,19 +90,21 @@ const AppShell = () => {
           <Route path="/checkout/payos" element={<PayosCheckoutPage />} />
 
           {/* Admin */}
-          <Route path="/admin/login" element={<AdminLoginPage />} />
-          <Route element={<AdminGuard />}>
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<AdminDashboardPage />} />
-              <Route path="products" element={<AdminProductsPage />} />
-              <Route path="products/new" element={<ProductFormPage />} />
-              <Route path="products/:id/edit" element={<ProductFormPage />} />
-              <Route path="campaigns" element={<AdminCampaignsPage />} />
-              <Route path="reference" element={<AdminReferencePage />} />
-              <Route path="users" element={<AdminUsersPage />} />
-              <Route path="orders" element={<AdminOrdersPage />} />
-              <Route path="articles" element={<AdminArticlesPage />} />
-              <Route path="notifications" element={<AdminNotificationsPage />} />
+          <Route element={<AdminDomainGuard />}>
+            <Route path="/admin/login" element={<AdminLoginPage />} />
+            <Route element={<AdminGuard />}>
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboardPage />} />
+                <Route path="products" element={<AdminProductsPage />} />
+                <Route path="products/new" element={<ProductFormPage />} />
+                <Route path="products/:id/edit" element={<ProductFormPage />} />
+                <Route path="campaigns" element={<AdminCampaignsPage />} />
+                <Route path="reference" element={<AdminReferencePage />} />
+                <Route path="users" element={<AdminUsersPage />} />
+                <Route path="orders" element={<AdminOrdersPage />} />
+                <Route path="articles" element={<AdminArticlesPage />} />
+                <Route path="notifications" element={<AdminNotificationsPage />} />
+              </Route>
             </Route>
           </Route>
         </Routes>

@@ -13,6 +13,9 @@ const PAYMENT_METHODS = [
   { id: 'BANK_TRANSFER', label: 'Trả qua mobile banking', description: 'Thanh toán bằng QR PayOS', icon: FiCreditCard },
 ]
 
+const TIER_DISCOUNTS = { BRONZE: 0, SILVER: 0.05, GOLD: 0.10, PLATINUM: 0.15 }
+const TIER_LABELS = { BRONZE: 'Đồng', SILVER: 'Bạc', GOLD: 'Vàng', PLATINUM: 'Bạch Kim' }
+
 const CheckoutPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
@@ -25,8 +28,16 @@ const CheckoutPage = () => {
     : []
 
   const subtotal = useMemo(() => selectedItems.reduce((sum, item) => sum + Number(item.lineSubtotal || 0), 0), [selectedItems])
-  const shippingFee = 30000
-  const total = subtotal + shippingFee
+  
+  const tier = user?.loyaltyTier || 'BRONZE'
+  const discountRate = TIER_DISCOUNTS[tier] || 0
+  const loyaltyDiscountAmount = subtotal * discountRate
+  const discountedSubtotal = subtotal - loyaltyDiscountAmount
+  
+  const shippingFee = discountedSubtotal >= 1000000 ? 0 : 30000
+  const vatAmount = (discountedSubtotal + shippingFee) * 0.10
+  const total = discountedSubtotal + shippingFee + vatAmount
+  const earnedPoints = Math.floor(total / 10000)
 
   const [form, setForm] = useState({ recipientName: '', recipientPhone: '', shippingAddress: '', note: '', paymentMethod: 'COD' })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -138,8 +149,21 @@ const CheckoutPage = () => {
           <div className="mt-4 space-y-3 text-sm">
             <div className="flex items-center justify-between"><span className="text-black/60">Sản phẩm</span><span className="font-semibold">{selectedItems.length}</span></div>
             <div className="flex items-center justify-between"><span className="text-black/60">Tạm tính</span><span className="font-semibold">{formatVnd(subtotal)}</span></div>
+            
+            <div className={`flex items-center justify-between ${loyaltyDiscountAmount > 0 ? 'text-green-600' : 'text-black/60'}`}>
+              <span>Giảm giá VIP ({TIER_LABELS[tier]})</span>
+              <span className="font-semibold">{loyaltyDiscountAmount > 0 ? `-${formatVnd(loyaltyDiscountAmount)}` : '0 đ'}</span>
+            </div>
+            
             <div className="flex items-center justify-between"><span className="text-black/60">Phí ship</span><span className="font-semibold">{formatVnd(shippingFee)}</span></div>
-            <div className="flex items-center justify-between"><span className="text-black/60">Tổng thanh toán</span><span className="font-semibold text-base">{formatVnd(total)}</span></div>
+            <div className="flex items-center justify-between"><span className="text-black/60">Thuế VAT (10%)</span><span className="font-semibold">{formatVnd(vatAmount)}</span></div>
+            <div className="pt-3 border-t border-black/10 flex items-center justify-between"><span className="font-medium text-black">Tổng thanh toán</span><span className="font-semibold text-xl">{formatVnd(total)}</span></div>
+            
+            {earnedPoints > 0 && (
+              <div className="mt-4 p-3 bg-gradient-to-r from-[#ffd700]/10 to-[#b8860b]/10 rounded-xl border border-[#ffd700]/30 text-center">
+                <p className="text-[#b8860b] text-xs font-semibold">✨ Bạn sẽ nhận được {earnedPoints} điểm thưởng</p>
+              </div>
+            )}
           </div>
 
           <button type="button" onClick={handleSubmit} disabled={isSubmitting || !selectedItems.length} className="mt-6 w-full px-5 py-3 text-sm font-semibold text-white bg-black rounded-full disabled:opacity-40 hover:bg-black/90 transition-colors">

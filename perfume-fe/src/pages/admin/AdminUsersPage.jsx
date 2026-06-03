@@ -1,8 +1,41 @@
 import { useEffect, useMemo, useState } from 'react'
 import { FiEye, FiPower, FiX } from 'react-icons/fi'
-import { deactivateUserApi, getAllUsersApi, getUserByIdApi } from '../../api/userApi'
+import { toggleUserStatusApi, getAllUsersApi, getUserByIdApi } from '../../api/userApi'
 
 const EXCLUDED_FIELDS = new Set(['status', 'isVerified'])
+
+const STATUS_LABELS = {
+  ACTIVE: 'Đang hoạt động',
+  CANCELLED: 'Đã khóa',
+}
+
+const ROLE_LABELS = {
+  CUSTOMER: 'Khách hàng',
+  ADMIN: 'Quản trị viên',
+}
+
+const TIER_LABELS = {
+  BRONZE: 'Đồng',
+  SILVER: 'Bạc',
+  GOLD: 'Vàng',
+  PLATINUM: 'Bạch kim',
+}
+
+const FIELD_LABELS = {
+  id: 'Mã (ID)',
+  username: 'Tên đăng nhập',
+  firstName: 'Họ',
+  lastName: 'Tên',
+  fullName: 'Họ và tên',
+  email: 'Email',
+  gender: 'Giới tính',
+  phoneNumber: 'Số điện thoại',
+  address: 'Địa chỉ',
+  role: 'Vai trò',
+  loyaltyPoints: 'Điểm tích lũy',
+  loyaltyTier: 'Hạng VIP',
+  profilePicture: 'Ảnh đại diện',
+}
 
 const AdminUsersPage = () => {
   const [users, setUsers] = useState([])
@@ -41,16 +74,14 @@ const AdminUsersPage = () => {
     }
   }
 
-  const handleDeactivate = async (userId) => {
-    const reason = window.prompt('Nhập lý do deactive user này')
-    if (!reason || !reason.trim()) return
-    setActionLoadingId(userId)
+  const handleToggleStatus = async (user) => {
+    setActionLoadingId(user.id)
     setError('')
     try {
-      await deactivateUserApi(userId, { reason: reason.trim() })
+      await toggleUserStatusApi(user.id)
       await loadUsers()
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || 'Không deactive được user')
+      setError(err?.response?.data?.message || err?.message || 'Không thay đổi được trạng thái user')
     } finally {
       setActionLoadingId(null)
     }
@@ -66,7 +97,7 @@ const AdminUsersPage = () => {
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold text-black">Quản trị người dùng</h1>
-          <p className="mt-2 text-sm text-black/60">Tổng user: {users.length} · Đang hoạt động: {activeCount}</p>
+          <p className="mt-2 text-sm text-black/60">Tổng người dùng: {users.length} · Đang hoạt động: {activeCount}</p>
         </div>
       </div>
 
@@ -80,16 +111,23 @@ const AdminUsersPage = () => {
               <div>
                 <div className="font-semibold text-black">{user.fullName || user.username}</div>
                 <div className="text-sm text-black/55">
-                  {user.email} · {user.role}
+                  {user.email} · {ROLE_LABELS[user.role] || user.role}
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-black text-white">{user.status || '—'}</span>
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${String(user.status || '').toUpperCase() === 'CANCELLED' ? 'bg-rose-50 text-rose-600' : 'bg-black text-white'}`}>
+                  {STATUS_LABELS[user.status] || user.status || '—'}
+                </span>
+                {user.loyaltyTier && (
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold border border-[#b8860b]/30 bg-[#ffd700]/10 text-[#b8860b]">
+                    VIP: {TIER_LABELS[user.loyaltyTier] || user.loyaltyTier}
+                  </span>
+                )}
                 <button type="button" onClick={() => openDetail(user.id)} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black text-white text-sm font-semibold cursor-pointer">
                   <FiEye /> Xem thông tin
                 </button>
-                <button type="button" onClick={() => handleDeactivate(user.id)} disabled={actionLoadingId === user.id} className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-black/10 text-sm font-semibold text-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                  <FiPower /> {actionLoadingId === user.id ? 'Đang xử lý...' : 'Deactive'}
+                <button type="button" onClick={() => handleToggleStatus(user)} disabled={actionLoadingId === user.id} className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${String(user.status || '').toUpperCase() === 'CANCELLED' ? 'border-emerald-600/30 text-emerald-600 bg-emerald-50 hover:bg-emerald-100' : 'border-black/10 text-black hover:bg-black/5'}`}>
+                  <FiPower /> {actionLoadingId === user.id ? 'Đang xử lý...' : (String(user.status || '').toUpperCase() === 'CANCELLED' ? 'Mở khóa' : 'Khóa')}
                 </button>
               </div>
             </div>
@@ -102,7 +140,7 @@ const AdminUsersPage = () => {
           <div className="w-full max-w-[80vw] max-h-[80vh] overflow-auto rounded-[28px] bg-white shadow-[0_30px_120px_rgba(0,0,0,0.25)]" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 flex items-center justify-between px-6 py-5 border-b border-black/5 bg-white/95 backdrop-blur">
               <div>
-                <div className="text-xs uppercase tracking-[0.25em] text-black/40">User detail</div>
+                <div className="text-xs uppercase tracking-[0.25em] text-black/40">Chi tiết người dùng</div>
                 <div className="mt-1 text-2xl font-semibold text-black">{selectedUser.fullName || selectedUser.username}</div>
               </div>
               <button type="button" onClick={() => setSelectedUser(null)} className="w-11 h-11 rounded-full bg-black text-white flex items-center justify-center">
@@ -112,8 +150,8 @@ const AdminUsersPage = () => {
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
               {detailEntries.map(([key, value]) => (
                 <div key={key} className="p-4 rounded-2xl bg-[#fafafa] border border-black/5">
-                  <div className="text-xs uppercase tracking-[0.2em] text-black/40">{key}</div>
-                  <div className="mt-2 text-sm font-semibold text-black break-words">{formatValue(value)}</div>
+                  <div className="text-xs uppercase tracking-[0.2em] text-black/40">{FIELD_LABELS[key] || key}</div>
+                  <div className="mt-2 text-sm font-semibold text-black break-words">{formatValue(value, key)}</div>
                 </div>
               ))}
             </div>
@@ -125,7 +163,20 @@ const AdminUsersPage = () => {
   )
 }
 
-const formatValue = (value) => {
+const formatGender = (value) => {
+  const normalized = String(value || '').trim().toLowerCase()
+  if (!normalized) return '—'
+  if (['male', 'man', 'm', 'nam'].includes(normalized)) return 'Nam'
+  if (['female', 'woman', 'f', 'nu', 'nữ'].includes(normalized)) return 'Nữ'
+  if (['other', 'others', 'khac', 'khác'].includes(normalized)) return 'Khác'
+  return String(value)
+}
+
+const formatValue = (value, key) => {
+  if (key === 'gender') return formatGender(value)
+  if (key === 'role') return ROLE_LABELS[value] || value
+  if (key === 'status') return STATUS_LABELS[value] || value
+  if (key === 'loyaltyTier') return TIER_LABELS[value] || value
   if (value === null || value === undefined || value === '') return '—'
   if (typeof value === 'boolean') return value ? 'Có' : 'Không'
   if (typeof value === 'object') return JSON.stringify(value)

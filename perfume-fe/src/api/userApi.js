@@ -15,7 +15,7 @@ export const getUserByIdApi = async (userId) => {
   return res.data
 }
 
-export const deactivateUserApi = async (userId, payload = {}) => {
-  const res = await axiosClient.patch(`/users/${userId}/cancel`, payload)
+export const toggleUserStatusApi = async (userId) => {
+  const res = await axiosClient.patch(`/users/${userId}/toggle-status`)
   return res.data
 }

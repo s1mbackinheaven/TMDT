@@ -30,6 +30,8 @@ public class CheckoutBillResponse {
     private BigDecimal vatRate;
     private BigDecimal vatAmount;
     private BigDecimal grandTotal;
+    private Integer earnedPoints;
+    private BigDecimal loyaltyDiscountAmount;
     private Integer itemsCount;
     private List<CartItemResponse> items;
 }

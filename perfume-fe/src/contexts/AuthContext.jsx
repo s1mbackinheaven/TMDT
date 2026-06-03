@@ -1,4 +1,5 @@
-import { createContext, useMemo, useState } from 'react'
+import { createContext, useMemo, useState, useEffect } from 'react'
+import { getMyUserApi } from '../api/userApi'
 
 export const AuthContext = createContext(null)
 
@@ -42,7 +43,22 @@ export const AuthProvider = ({ children }) => {
     setAuth({ accessToken: '', refreshToken: '', user: null })
   }
 
-  const value = useMemo(() => ({ ...auth, isAuthenticated, login, logout }), [auth, isAuthenticated])
+  const refreshUser = async () => {
+    if (!auth?.accessToken) return
+    try {
+      const freshUser = await getMyUserApi()
+      persistUser(freshUser)
+      setAuth((prev) => ({ ...prev, user: freshUser }))
+    } catch (error) {
+      // ignore
+    }
+  }
+
+  useEffect(() => {
+    refreshUser()
+  }, [])
+
+  const value = useMemo(() => ({ ...auth, isAuthenticated, login, logout, refreshUser }), [auth, isAuthenticated])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

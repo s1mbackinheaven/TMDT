@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 import java.io.UnsupportedEncodingException;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import org.springframework.security.authentication.DisabledException;
 
 @Service
 @RequiredArgsConstructor
@@ -274,6 +275,9 @@ public class AuthenticationServiceIplm implements AuthenticationService {
         } catch (ResourceNotFoundException ex) {
             log.info("user whose username is {} not found in Database", username);
             return new ResponseEntity<>(GeneralAPIResponse.builder().message("User with this email does not exist").build(), HttpStatus.NOT_FOUND);
+        } catch (DisabledException ex) {
+            log.info("user whose username is {} is deactivated", username);
+            return new ResponseEntity<>(GeneralAPIResponse.builder().message("Tài khoản của bạn đã bị khóa").build(), HttpStatus.FORBIDDEN);
         }
         catch (Exception e) {
             log.error("Failed to authenticate user with username {}", username, e);
@@ -380,6 +384,8 @@ public class AuthenticationServiceIplm implements AuthenticationService {
                     .role(user.getRole())
                     .profilePicture(user.getProfilePicture())
                     .isOfficiallyEnabled(user.getIsVerified())
+                    .loyaltyPoints(user.getLoyaltyPoints())
+                    .loyaltyTier(user.getLoyaltyTier().name())
                     .build(), HttpStatus.OK);
 
         } catch (ResourceNotFoundException ex) {

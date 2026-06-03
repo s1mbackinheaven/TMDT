@@ -11,6 +11,6 @@ public interface UserService {
     List<UserResponse> getAllUsers();
     UserResponse getUserById(Long userId);
     UserResponse updateMyProfile(String username, UpdateProfileRequest request);
-    UserResponse cancelUser(Long userId, String adminUsername, CancelUserRequest request);
+    UserResponse toggleUserStatus(Long userId, String adminUsername);
     UserResponse cancelMyAccount(String username, CancelUserRequest request);
 }
