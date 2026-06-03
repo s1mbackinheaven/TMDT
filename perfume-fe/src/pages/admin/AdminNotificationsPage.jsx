@@ -59,11 +59,11 @@ const AdminNotificationsPage = () => {
       <form onSubmit={handleSubmit} className="space-y-4 bg-white rounded-3xl border border-black/5 p-6 shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <label className="text-sm font-medium text-black/70">
-            Recipient User ID (để trống = broadcast)
+            Gửi riêng cho ID
             <input value={recipientUserId} onChange={(e) => setRecipientUserId(e.target.value)} className="mt-1 w-full px-4 py-3 rounded-xl border border-black/10 outline-none" placeholder="Ví dụ: 12" />
           </label>
           <label className="text-sm font-medium text-black/70">
-            Type
+            Kiểu
             <select value={type} onChange={(e) => setType(e.target.value)} className="mt-1 w-full px-4 py-3 rounded-xl border border-black/10 bg-white outline-none">
               {TYPES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
             </select>
@@ -71,22 +71,22 @@ const AdminNotificationsPage = () => {
         </div>
 
         <label className="text-sm font-medium text-black/70 block">
-          Title
+          Tiêu đề
           <input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1 w-full px-4 py-3 rounded-xl border border-black/10 outline-none" />
         </label>
 
         <label className="text-sm font-medium text-black/70 block">
-          Message
+          Nội dung
           <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={5} className="mt-1 w-full px-4 py-3 rounded-xl border border-black/10 outline-none" />
         </label>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <label className="text-sm font-medium text-black/70">
-            Action URL
+            URL hành động
             <input value={actionUrl} onChange={(e) => setActionUrl(e.target.value)} className="mt-1 w-full px-4 py-3 rounded-xl border border-black/10 outline-none" placeholder="/news/slug or /products/123" />
           </label>
           <label className="text-sm font-medium text-black/70">
-            Image URL
+            URL ảnh
             <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="mt-1 w-full px-4 py-3 rounded-xl border border-black/10 outline-none" placeholder="http://... hoặc /uploads/..." />
           </label>
         </div>

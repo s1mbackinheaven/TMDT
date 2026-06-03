@@ -18,4 +18,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByStatusAndCreatedAtBetweenOrderByCreatedAtDesc(OrderStatus status, Instant from, Instant to);
     List<Order> findByPaymentStatusAndCreatedAtBetweenOrderByCreatedAtDesc(OrderPaymentStatus paymentStatus, Instant from, Instant to);
     List<Order> findByStatusAndPaymentStatusAndCreatedAtBetweenOrderByCreatedAtDesc(OrderStatus status, OrderPaymentStatus paymentStatus, Instant from, Instant to);
+
+    long countByStatus(OrderStatus status);
+
+    @org.springframework.data.jpa.repository.Query("SELECT SUM(o.grandTotal) FROM Order o WHERE o.status = :status")
+    java.math.BigDecimal sumGrandTotalByStatus(@org.springframework.data.repository.query.Param("status") OrderStatus status);
 }

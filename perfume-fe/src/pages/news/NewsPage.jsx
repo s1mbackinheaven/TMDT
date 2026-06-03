@@ -30,6 +30,23 @@ const getExcerpt = (article) => {
   return raw.length > 140 ? `${raw.slice(0, 140)}...` : raw
 }
 
+const formatDate = (isoString) => {
+  if (!isoString) return '';
+  try {
+    const date = new Date(isoString);
+    return date.toLocaleString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: 'Asia/Ho_Chi_Minh'
+    });
+  } catch (e) {
+    return isoString;
+  }
+}
+
 const NewsPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
@@ -73,7 +90,12 @@ const NewsPage = () => {
   }
 
   return (
-    <div className="py-10">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
+      className="py-10"
+    >
       <div className="w-full max-w-7xl px-4 mx-auto">
         <div className="mb-6">
           <h1 className="text-3xl md:text-4xl font-semibold text-black">Tin tức nước hoa</h1>
@@ -116,60 +138,70 @@ const NewsPage = () => {
         {loading ? (
           <div className="py-20 text-center text-black/55">Đang tải bài viết...</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          <motion.div 
+            initial="hidden"
+            animate="visible"
+            variants={{
+              visible: { transition: { staggerChildren: 0.1 } }
+            }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+          >
             {items.map((article) => {
               const hovered = hoveredId === article.id
               return (
                 <motion.article
                   key={article.id}
-                  className="group relative overflow-hidden rounded-[26px] bg-white border border-black/5 shadow-[0_18px_60px_rgba(0,0,0,0.06)] cursor-pointer min-h-[520px]"
+                  variants={{
+                    hidden: { opacity: 0, y: 30 },
+                    visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } }
+                  }}
+                  className="group relative overflow-hidden rounded-[24px] bg-black border border-black/5 shadow-xl cursor-pointer h-[500px]"
                   onMouseEnter={() => setHoveredId(article.id)}
                   onMouseLeave={() => setHoveredId(null)}
                   whileHover={{ y: -6 }}
-                  transition={{ duration: 0.28 }}
                   onClick={() => navigate(`/news/${article.slug}`)}
                 >
                   <div className="absolute inset-0">
                     <img
                       src={article.thumbnail || 'https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=900&q=80'}
                       alt={article.title}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 opacity-90"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-black/0" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
                   </div>
 
-                  <div className="relative z-10 flex h-full min-h-[520px] flex-col justify-end p-5 md:p-6 text-white">
-                    <div className="mb-3 text-xs uppercase tracking-[0.22em] text-white/70">{article.categoryName}</div>
-                    <h2 className="text-xl md:text-2xl font-semibold leading-tight line-clamp-3">{article.title}</h2>
+                  <div className="relative z-10 flex h-full flex-col justify-end p-5 md:p-6 text-[#f5f5f0]">
+                    <div className="mb-4 text-[10px] uppercase tracking-[0.25em] text-[#d4d4d0] font-medium">{article.categoryName}</div>
+                    <h2 className="text-xl md:text-[22px] font-semibold leading-[1.3] line-clamp-3 mb-2 text-[#fcfcfc] group-hover:text-white transition-colors">{article.title}</h2>
 
                     <motion.div
                       initial={false}
-                      animate={{ opacity: hovered ? 1 : 0, y: hovered ? 0 : 14, height: hovered ? 'auto' : 0 }}
+                      animate={{ opacity: hovered ? 1 : 0, y: hovered ? 0 : 20, height: hovered ? 'auto' : 0 }}
                       transition={{ duration: 0.3, ease: 'easeOut' }}
                       className="overflow-hidden"
                     >
-                      <p className="mt-4 text-sm md:text-[15px] leading-6 text-white/85 line-clamp-4">
+                      <p className="mt-2 text-[13px] leading-[1.6] text-[#b8b8b3] line-clamp-3 font-light">
                         {article.excerpt}
                       </p>
-                      <div className="mt-4 flex items-center gap-4 text-xs text-white/70 flex-wrap">
-                        <span className="inline-flex items-center gap-2"><FiUser /> BACK Perfume</span>
-                        <span className="inline-flex items-center gap-2"><FiClock /> {article.createdAt}</span>
+                      <div className="mt-5 flex items-center gap-4 text-[11px] text-[#a0a09b] flex-wrap tracking-wide uppercase">
+                        <span className="inline-flex items-center gap-1.5"><FiUser size={12} /> BACK</span>
+                        <span className="inline-flex items-center gap-1.5"><FiClock size={12} /> {formatDate(article.createdAt)}</span>
                       </div>
                       <button
                         type="button"
-                        className="mt-5 inline-flex items-center gap-2 px-5 py-3 rounded-full border border-white/30 bg-white/10 text-sm font-semibold text-white backdrop-blur-sm hover:bg-white hover:text-black transition-colors"
+                        className="mt-6 w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full border border-white/20 bg-white/5 text-[13px] font-medium text-[#f5f5f0] backdrop-blur-md hover:bg-white hover:text-black transition-all duration-300"
                       >
-                        Xem chi tiết <FiArrowRight />
+                        Khám phá <FiArrowRight />
                       </button>
                     </motion.div>
                   </div>
                 </motion.article>
               )
             })}
-          </div>
+          </motion.div>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }
 

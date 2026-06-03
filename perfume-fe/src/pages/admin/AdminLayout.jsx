@@ -25,14 +25,14 @@ const AdminLayout = () => {
         <aside className="sticky top-0 h-screen hidden lg:flex flex-col border-r border-black/10 bg-white">
           <div className="px-6 py-5 border-b border-black/10">
             <div className="flex items-center gap-3">
-              <div 
+              <div
                 onClick={handleGoShop}
                 className="flex items-center justify-center w-10 h-10 text-sm font-semibold border border-black/15 rounded-full cursor-pointer hover:bg-black/5"
               >
                 BACK
               </div>
               <div>
-                <p className="text-sm font-semibold">Admin Console</p>
+                <p className="text-sm font-semibold">Quản trị viên</p>
                 <p className="text-xs text-black/50">{user?.email || '—'}</p>
               </div>
             </div>
@@ -47,7 +47,7 @@ const AdminLayout = () => {
               }
             >
               <FiHome size={16} />
-              Dashboard
+              Tổng quan
             </NavLink>
 
             <NavLink
@@ -57,7 +57,7 @@ const AdminLayout = () => {
               }
             >
               <FiBox size={16} />
-              Products
+              Sản phẩm
             </NavLink>
 
             <NavLink
@@ -67,7 +67,7 @@ const AdminLayout = () => {
               }
             >
               <FiTag size={16} />
-              Khuyến mãi (Campaigns)
+              Khuyến mãi
             </NavLink>
 
             <NavLink
@@ -77,7 +77,7 @@ const AdminLayout = () => {
               }
             >
               <FiGrid size={16} />
-              Reference Data
+              Dữ liệu nước hoa
             </NavLink>
 
             <NavLink
@@ -87,7 +87,7 @@ const AdminLayout = () => {
               }
             >
               <FiUsers size={16} />
-              Users
+              Người dùng
             </NavLink>
 
             <NavLink
@@ -97,7 +97,7 @@ const AdminLayout = () => {
               }
             >
               <FiShoppingBag size={16} />
-              Orders
+              Đơn hàng
             </NavLink>
 
             <NavLink
@@ -107,7 +107,7 @@ const AdminLayout = () => {
               }
             >
               <FiBookOpen size={16} />
-              Articles
+              Bài viết
             </NavLink>
 
             <NavLink
@@ -117,7 +117,7 @@ const AdminLayout = () => {
               }
             >
               <FiBell size={16} />
-              Notifications
+              Thông báo
             </NavLink>
           </nav>
 
@@ -145,9 +145,9 @@ const AdminLayout = () => {
           <div className="sticky top-0 z-20 bg-white/85 backdrop-blur-md border-b border-black/10">
             <div className="flex items-center justify-between gap-4 px-4 md:px-10 py-4">
               <div className="flex items-center gap-3">
-                <div className="lg:hidden text-sm font-semibold">Admin Console</div>
+                <div className="lg:hidden text-sm font-semibold">Quản trị viên</div>
                 <div className="hidden md:block text-sm text-black/60">
-                  Role: <span className="font-semibold text-black">{user?.role || '—'}</span>
+                  Vai trò: <span className="font-semibold text-black">{user?.role || '—'}</span>
                 </div>
               </div>
 
@@ -164,7 +164,7 @@ const AdminLayout = () => {
                   className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-black rounded-full cursor-pointer hover:bg-black/90 transition-colors"
                   onClick={handleLogout}
                 >
-                  Logout
+                  Đăng xuất
                 </button>
               </div>
             </div>
