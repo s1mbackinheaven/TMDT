@@ -16,7 +16,7 @@ public class CaffeineCacheConfig {
     // this method is used to create a cache manager, which is used to create a cache with the name "users"
     @Bean
     public CacheManager cacheManager() {
-        CaffeineCacheManager cacheManager = new CaffeineCacheManager("user");
+        CaffeineCacheManager cacheManager = new CaffeineCacheManager("user", "activeCampaigns");
         cacheManager.setCaffeine(caffeineCacheBuilder());
         return cacheManager;
     }

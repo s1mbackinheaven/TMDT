@@ -208,6 +208,10 @@ const MainHeader = () => {
               className={`cursor-pointer transition-colors ${
                 isLightOnTop ? 'hover:text-white/80' : 'hover:text-black/60'
               }`}
+              onClick={() => {
+                navigate('/about')
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
             >
               Về BACK Perfume
             </button>

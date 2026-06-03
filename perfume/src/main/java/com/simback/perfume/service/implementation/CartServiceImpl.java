@@ -30,6 +30,7 @@ public class CartServiceImpl implements CartService {
     private final CartItemRepository cartItemRepository;
     private final ProductVariantRepository productVariantRepository;
     private final UserRepository userRepository;
+    private final com.simback.perfume.service.PricingService pricingService;
 
     @Override
     @Transactional(readOnly = true)
@@ -220,12 +221,12 @@ public class CartServiceImpl implements CartService {
                 .productNameSnapshot(variant.getProduct().getName())
                 .variantVolumeSnapshot(variant.getVolume())
                 .thumbnailSnapshot(variant.getProduct().getThumbnail())
-                .unitPriceSnapshot(variant.getPrice())
-                .originalPriceSnapshot(variant.getOriginalPrice())
-                .discountPercentSnapshot(variant.getDiscountPercent())
+                .unitPriceSnapshot(pricingService.calculateEffectivePrice(variant))
+                .originalPriceSnapshot(variant.getOriginalPrice() != null ? variant.getOriginalPrice() : variant.getPrice())
+                .discountPercentSnapshot(pricingService.calculateEffectiveDiscountPercent(variant))
                 .quantity(quantity)
                 .availableStockSnapshot(variant.getStockQuantity() != null ? variant.getStockQuantity() : 0)
-                .lineSubtotal(calculateLineSubtotal(variant.getPrice(), quantity))
+                .lineSubtotal(calculateLineSubtotal(pricingService.calculateEffectivePrice(variant), quantity))
                 .status(determineStatus(variant))
                 .build();
     }
@@ -236,12 +237,12 @@ public class CartServiceImpl implements CartService {
         item.setProductNameSnapshot(variant.getProduct().getName());
         item.setVariantVolumeSnapshot(variant.getVolume());
         item.setThumbnailSnapshot(variant.getProduct().getThumbnail());
-        item.setUnitPriceSnapshot(variant.getPrice());
-        item.setOriginalPriceSnapshot(variant.getOriginalPrice());
-        item.setDiscountPercentSnapshot(variant.getDiscountPercent());
+        item.setUnitPriceSnapshot(pricingService.calculateEffectivePrice(variant));
+        item.setOriginalPriceSnapshot(variant.getOriginalPrice() != null ? variant.getOriginalPrice() : variant.getPrice());
+        item.setDiscountPercentSnapshot(pricingService.calculateEffectiveDiscountPercent(variant));
         item.setQuantity(quantity);
         item.setAvailableStockSnapshot(variant.getStockQuantity() != null ? variant.getStockQuantity() : 0);
-        item.setLineSubtotal(calculateLineSubtotal(variant.getPrice(), quantity));
+        item.setLineSubtotal(calculateLineSubtotal(pricingService.calculateEffectivePrice(variant), quantity));
         item.setStatus(determineStatus(variant));
     }
 
@@ -344,9 +345,9 @@ public class CartServiceImpl implements CartService {
             options.add(new VariantOptionResponse(
                     variant.getId(),
                     variant.getVolume(),
-                    variant.getPrice(),
-                    variant.getOriginalPrice(),
-                    variant.getDiscountPercent(),
+                    pricingService.calculateEffectivePrice(variant),
+                    variant.getOriginalPrice() != null ? variant.getOriginalPrice() : variant.getPrice(),
+                    pricingService.calculateEffectiveDiscountPercent(variant),
                     variant.getStockQuantity(),
                     variant.getId().equals(item.getVariant().getId())
             ));

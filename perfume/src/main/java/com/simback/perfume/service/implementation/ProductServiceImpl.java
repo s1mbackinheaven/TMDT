@@ -8,6 +8,7 @@ import com.simback.perfume.payload.requests.ProductUpdateRequest;
 import com.simback.perfume.payload.responses.*;
 import com.simback.perfume.repository.*;
 import com.simback.perfume.service.NotificationService;
+import com.simback.perfume.service.PricingService;
 import com.simback.perfume.service.ProductService;
 import com.simback.perfume.specification.ProductSpecification;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,7 @@ public class ProductServiceImpl implements ProductService {
     private final ScentFamilyRepository scentFamilyRepository;
     private final TagRepository tagRepository;
     private final NotificationService notificationService;
+    private final PricingService pricingService;
 
     @Override
     @Transactional
@@ -294,7 +296,7 @@ public class ProductServiceImpl implements ProductService {
 
     private ProductListResponse toProductListResponse(Product p) {
         BigDecimal minPrice = p.getVariants().stream()
-                .map(ProductVariant::getPrice)
+                .map(pricingService::calculateEffectivePrice)
                 .filter(Objects::nonNull)
                 .min(BigDecimal::compareTo)
                 .orElse(null);
@@ -337,9 +339,9 @@ public class ProductServiceImpl implements ProductService {
         return ProductVariantDto.builder()
                 .id(v.getId())
                 .volume(v.getVolume())
-                .price(v.getPrice())
-                .originalPrice(v.getOriginalPrice())
-                .discountPercent(v.getDiscountPercent())
+                .price(pricingService.calculateEffectivePrice(v))
+                .originalPrice(v.getOriginalPrice() != null ? v.getOriginalPrice() : v.getPrice())
+                .discountPercent(pricingService.calculateEffectiveDiscountPercent(v))
                 .stockQuantity(v.getStockQuantity())
                 .soldCount(v.getSoldCount() != null ? v.getSoldCount() : 0)
                 .sku(v.getSku())

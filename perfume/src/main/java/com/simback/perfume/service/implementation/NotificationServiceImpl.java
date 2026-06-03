@@ -43,21 +43,21 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional(readOnly = true)
     public List<NotificationResponse> getForCurrentUser(String username) {
         User user = resolveUser(resolveUsername(username));
-        return notificationRepository.findByRecipientIdOrderByCreatedAtDesc(user.getId()).stream().map(this::toResponse).toList();
+        return notificationRepository.findForUser(user.getId()).stream().map(this::toResponse).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<NotificationResponse> getUnreadForCurrentUser(String username) {
         User user = resolveUser(resolveUsername(username));
-        return notificationRepository.findByRecipientIdAndIsReadFalseOrderByCreatedAtDesc(user.getId()).stream().map(this::toResponse).toList();
+        return notificationRepository.findUnreadForUser(user.getId()).stream().map(this::toResponse).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public long countUnreadForCurrentUser(String username) {
         User user = resolveUser(resolveUsername(username));
-        return notificationRepository.countByRecipientIdAndIsReadFalse(user.getId());
+        return notificationRepository.countUnreadForUser(user.getId());
     }
 
     @Override
@@ -77,7 +77,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void markAllAsRead(String username) {
         User user = resolveUser(resolveUsername(username));
-        var unread = notificationRepository.findByRecipientIdAndIsReadFalseOrderByCreatedAtDesc(user.getId());
+        var unread = notificationRepository.findUnreadForUser(user.getId());
         unread.forEach(n -> n.setIsRead(true));
         notificationRepository.saveAll(unread);
     }

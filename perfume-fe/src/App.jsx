@@ -4,12 +4,14 @@ import MainHeader from './components/layout/MainHeader'
 import MainFooter from './components/layout/MainFooter'
 import HeroSlider from './components/home/HeroSlider'
 import FeatureMarquee from './components/home/FeatureMarquee'
+import ProductShowcaseSection from './components/home/ProductShowcaseSection'
 import HomeBestSellerSection from './components/home/HomeBestSellerSection'
 import NewsPage from './pages/news/NewsPage'
 import NewsDetailPage from './pages/news/NewsDetailPage'
 import NotificationsPage from './pages/notifications/NotificationsPage'
 import AdminNotificationsPage from './pages/admin/AdminNotificationsPage'
 import AuthPage from './pages/auth/AuthPage'
+import AboutPage from './pages/about/AboutPage'
 import AccountPage from './pages/accounts/AccountPage'
 import { AuthProvider } from './contexts/AuthContext'
 import { ensureGuestKey } from './utils/guestKey'
@@ -23,6 +25,7 @@ import CheckoutPage from './pages/checkout/CheckoutPage'
 import PayosCheckoutPage from './pages/checkout/PayosCheckoutPage'
 import CodSuccessPage from './pages/checkout/CodSuccessPage'
 import AdminGuard from './pages/admin/AdminGuard'
+import AdminLoginPage from './pages/admin/AdminLoginPage'
 import AdminLayout from './pages/admin/AdminLayout'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import AdminUsersPage from './pages/admin/AdminUsersPage'
@@ -31,6 +34,10 @@ import AdminProductsPage from './pages/admin/products/AdminProductsPage'
 import AdminOrdersPage from './pages/admin/AdminOrdersPage'
 import AdminArticlesPage from './pages/admin/AdminArticlesPage'
 import ProductFormPage from './pages/admin/products/ProductFormPage'
+import AdminCampaignsPage from './pages/admin/campaigns/AdminCampaignsPage'
+import Chatbot from './components/common/Chatbot'
+import PromoPopup from './components/common/PromoPopup'
+import CampaignPopup from './components/common/CampaignPopup'
 
 const AppShell = () => {
   const location = useLocation()
@@ -49,11 +56,13 @@ const AppShell = () => {
               <>
                 <HeroSlider />
                 <FeatureMarquee />
+                <ProductShowcaseSection />
                 <HomeBestSellerSection />
               </>
             }
           />
           <Route path="/news" element={<NewsPage />} />
+          <Route path="/about" element={<AboutPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/auth/forgot" element={<ForgotPasswordPage />} />
@@ -69,12 +78,14 @@ const AppShell = () => {
           <Route path="/checkout/payos" element={<PayosCheckoutPage />} />
 
           {/* Admin */}
+          <Route path="/admin/login" element={<AdminLoginPage />} />
           <Route element={<AdminGuard />}>
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboardPage />} />
               <Route path="products" element={<AdminProductsPage />} />
               <Route path="products/new" element={<ProductFormPage />} />
               <Route path="products/:id/edit" element={<ProductFormPage />} />
+              <Route path="campaigns" element={<AdminCampaignsPage />} />
               <Route path="reference" element={<AdminReferencePage />} />
               <Route path="users" element={<AdminUsersPage />} />
               <Route path="orders" element={<AdminOrdersPage />} />
@@ -85,7 +96,10 @@ const AppShell = () => {
         </Routes>
       </main>
 
+      {isAdmin ? null : <Chatbot />}
       {isAdmin ? null : <MainFooter />}
+      {isAdmin ? null : <CampaignPopup />}
+      {isAdmin ? null : <PromoPopup />}
     </div>
   )
 }

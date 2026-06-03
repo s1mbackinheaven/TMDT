@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { FiBookOpen, FiBox, FiBell, FiGrid, FiHome, FiShoppingBag, FiUsers } from 'react-icons/fi'
+import { FiBookOpen, FiBox, FiBell, FiGrid, FiHome, FiShoppingBag, FiUsers, FiTag } from 'react-icons/fi'
 import { useAuth } from '../../hooks/useAuth'
 
 const linkBase =
@@ -25,7 +25,10 @@ const AdminLayout = () => {
         <aside className="sticky top-0 h-screen hidden lg:flex flex-col border-r border-black/10 bg-white">
           <div className="px-6 py-5 border-b border-black/10">
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-10 h-10 text-sm font-semibold border border-black/15 rounded-full">
+              <div 
+                onClick={handleGoShop}
+                className="flex items-center justify-center w-10 h-10 text-sm font-semibold border border-black/15 rounded-full cursor-pointer hover:bg-black/5"
+              >
                 BACK
               </div>
               <div>
@@ -55,6 +58,16 @@ const AdminLayout = () => {
             >
               <FiBox size={16} />
               Products
+            </NavLink>
+
+            <NavLink
+              to="/admin/campaigns"
+              className={({ isActive }) =>
+                `${linkBase} ${isActive ? 'bg-black text-white' : 'text-black/70 hover:bg-black/5'}`
+              }
+            >
+              <FiTag size={16} />
+              Khuyến mãi (Campaigns)
             </NavLink>
 
             <NavLink

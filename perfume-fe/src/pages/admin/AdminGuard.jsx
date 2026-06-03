@@ -5,8 +5,8 @@ const AdminGuard = () => {
   const { isAuthenticated, user } = useAuth()
   const role = user?.role
 
-  if (!isAuthenticated) return <Navigate to="/auth" replace />
-  if (role !== 'ADMIN') return <Navigate to="/" replace />
+  if (!isAuthenticated) return <Navigate to="/admin/login" replace />
+  if (role !== 'ADMIN') return <Navigate to="/admin/login" replace />
 
   return <Outlet />
 }

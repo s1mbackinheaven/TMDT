@@ -32,6 +32,10 @@ export const AuthProvider = ({ children }) => {
   }
 
   const logout = () => {
+    if (auth?.user?.email) {
+      sessionStorage.removeItem(`promoPopupShown_${auth.user.email}`)
+      sessionStorage.removeItem(`campaignPopupShown_${auth.user.email}`)
+    }
     localStorage.removeItem('accessToken')
     localStorage.removeItem('refreshToken')
     localStorage.removeItem('authUser')

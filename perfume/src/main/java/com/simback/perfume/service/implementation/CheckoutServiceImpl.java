@@ -31,6 +31,7 @@ public class CheckoutServiceImpl implements CheckoutService {
     private final UserRepository userRepository;
     private final ProductVariantRepository productVariantRepository;
     private final NotificationService notificationService;
+    private final com.simback.perfume.service.PricingService pricingService;
 
     @Override
     @Transactional(readOnly = true)
@@ -47,7 +48,8 @@ public class CheckoutServiceImpl implements CheckoutService {
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Không tìm thấy variant id: " + item.getVariant().getId()));
             validateStock(variant, item.getQuantity());
-            BigDecimal line = item.getUnitPriceSnapshot().multiply(BigDecimal.valueOf(item.getQuantity()));
+            BigDecimal currentPrice = pricingService.calculateEffectivePrice(variant);
+            BigDecimal line = currentPrice.multiply(BigDecimal.valueOf(item.getQuantity()));
             subtotal = subtotal.add(line);
             itemsCount += item.getQuantity();
         }
@@ -78,15 +80,17 @@ public class CheckoutServiceImpl implements CheckoutService {
                 .build();
 
         for (CartItem item : cart.getItems()) {
+            ProductVariant variant = productVariantRepository.findById(item.getVariant().getId()).orElseThrow();
+            BigDecimal currentPrice = pricingService.calculateEffectivePrice(variant);
             CheckoutDraftItem draftItem = CheckoutDraftItem.builder()
                     .draft(draft)
                     .product(item.getProduct())
                     .variant(item.getVariant())
                     .productNameSnapshot(item.getProductNameSnapshot())
                     .variantVolumeSnapshot(item.getVariantVolumeSnapshot())
-                    .unitPrice(item.getUnitPriceSnapshot())
+                    .unitPrice(currentPrice)
                     .quantity(item.getQuantity())
-                    .lineTotal(item.getUnitPriceSnapshot().multiply(BigDecimal.valueOf(item.getQuantity())))
+                    .lineTotal(currentPrice.multiply(BigDecimal.valueOf(item.getQuantity())))
                     .build();
             draft.getItems().add(draftItem);
         }
@@ -158,8 +162,8 @@ public class CheckoutServiceImpl implements CheckoutService {
                     .variantVolumeSnapshot(draftItem.getVariantVolumeSnapshot())
                     .thumbnailSnapshot(variant.getProduct().getThumbnail())
                     .unitPrice(draftItem.getUnitPrice())
-                    .originalPrice(variant.getOriginalPrice())
-                    .discountPercent(variant.getDiscountPercent())
+                    .originalPrice(variant.getOriginalPrice() != null ? variant.getOriginalPrice() : variant.getPrice())
+                    .discountPercent(pricingService.calculateEffectiveDiscountPercent(variant))
                     .quantity(draftItem.getQuantity())
                     .lineTotal(draftItem.getLineTotal())
                     .build();
