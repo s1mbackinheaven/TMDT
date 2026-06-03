@@ -222,7 +222,7 @@ const AccountPage = () => {
                               <div className="text-xs uppercase tracking-[0.2em] text-black/40">Mã đơn</div>
                               <div className="mt-1 text-lg font-semibold text-black">#{order.orderNumber}</div>
                             </div>
-                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-black text-white">{ORDER_STATUS_LABELS[order.status] || order.status}</span>
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusClasses(order.status, 'order')}`}>{ORDER_STATUS_LABELS[order.status] || order.status}</span>
                           </div>
                           <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-black/70">
                             <div><span className="block text-black/40">Thanh toán</span>{PAYMENT_STATUS_LABELS[order.paymentStatus] || order.paymentStatus}</div>
@@ -269,8 +269,8 @@ const AccountPage = () => {
             </div>
             <div className="p-6 md:p-8">
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                <InfoCard label="Trạng thái" value={selectedOrder.status} />
-                <InfoCard label="Thanh toán" value={selectedOrder.paymentStatus} />
+                <InfoCard label="Trạng thái" value={<StatusBadge value={selectedOrder.status} />} />
+                <InfoCard label="Thanh toán" value={<StatusBadge value={selectedOrder.paymentStatus} type="payment" />} />
                 <InfoCard label="Phương thức" value={selectedOrder.paymentMethod} />
                 <InfoCard label="Tổng tiền" value={formatVnd(selectedOrder.grandTotal)} />
               </div>
@@ -357,6 +357,27 @@ const formatGender = (value) => {
   if (['female', 'woman', 'f', 'nu', 'nữ'].includes(normalized)) return 'Nữ'
   if (['other', 'others', 'khac', 'khác'].includes(normalized)) return 'Khác'
   return String(value)
+}
+
+const getStatusClasses = (value, type) => {
+  if (type === 'payment') {
+    return value === 'PAID' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-rose-50 text-rose-600 border border-rose-200'
+  }
+  switch (value) {
+    case 'PENDING_CONFIRMATION': return 'border border-dashed border-amber-400 text-amber-600 bg-amber-50'
+    case 'PROCESSING': return 'bg-blue-50 text-blue-600 border border-blue-200'
+    case 'SHIPPED': return 'bg-violet-50 text-violet-600 border border-violet-200'
+    case 'DELIVERED': return 'bg-cyan-50 text-cyan-600 border border-cyan-200'
+    case 'COMPLETED': return 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+    case 'CANCELLED': return 'bg-rose-50 text-rose-600 border border-rose-200'
+    default: return 'bg-gray-50 text-gray-600 border border-gray-200'
+  }
+}
+
+const StatusBadge = ({ value, type = 'order' }) => {
+  const label = type === 'payment' ? PAYMENT_STATUS_LABELS[value] || value : ORDER_STATUS_LABELS[value] || value
+  const classes = getStatusClasses(value, type)
+  return <span className={`px-3 py-1 rounded-full text-xs font-semibold inline-block ${classes}`}>{label}</span>
 }
 
 const InfoCard = ({ label, value }) => (

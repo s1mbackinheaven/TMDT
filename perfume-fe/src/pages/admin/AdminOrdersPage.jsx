@@ -311,9 +311,25 @@ const formatValue = (value) => {
   return String(value)
 }
 
+const getStatusClasses = (value, type) => {
+  if (type === 'payment') {
+    return value === 'PAID' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-rose-50 text-rose-600 border border-rose-200'
+  }
+  switch (value) {
+    case 'PENDING_CONFIRMATION': return 'border border-dashed border-amber-400 text-amber-600 bg-amber-50'
+    case 'PROCESSING': return 'bg-blue-50 text-blue-600 border border-blue-200'
+    case 'SHIPPED': return 'bg-violet-50 text-violet-600 border border-violet-200'
+    case 'DELIVERED': return 'bg-cyan-50 text-cyan-600 border border-cyan-200'
+    case 'COMPLETED': return 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+    case 'CANCELLED': return 'bg-rose-50 text-rose-600 border border-rose-200'
+    default: return 'bg-gray-50 text-gray-600 border border-gray-200'
+  }
+}
+
 const StatusBadge = ({ value, type = 'order' }) => {
   const label = type === 'payment' ? PAYMENT_STATUS_LABELS[value] || value : ORDER_STATUS_LABELS[value] || value
-  return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-black text-white">{label}</span>
+  const classes = getStatusClasses(value, type)
+  return <span className={`px-3 py-1 rounded-full text-xs font-semibold inline-block ${classes}`}>{label}</span>
 }
 
 const ActionButton = ({ label, icon, onClick, loading }) => (
